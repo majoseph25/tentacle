@@ -23,14 +23,14 @@ jobs:
       - uses: actions/checkout@v4
 
       # Fails if gradle/wrapper/gradle-wrapper.jar isn't an official Gradle release (supply-chain check).
-      - uses: gradle/actions/wrapper-validation@v4
+      - uses: gradle/actions/wrapper-validation@v5
 
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "21"
 
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v5
 
       - name: Unit tests, lint and release build
         run: ./gradlew --no-daemon testDebugUnitTest testReleaseUnitTest lintDebug lintRelease assembleRelease
