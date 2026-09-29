@@ -7,6 +7,9 @@ on:
     branches: [main]
   pull_request:
 
+# Every action is pinned to a full commit SHA (the tag in the comment is for humans and Dependabot),
+# so a moved or compromised tag upstream can't change what runs here.
+
 # Least privilege: the workflow only needs to read the code.
 permissions:
   contents: read
@@ -20,24 +23,24 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # Fails if gradle/wrapper/gradle-wrapper.jar isn't an official Gradle release (supply-chain check).
-      - uses: gradle/actions/wrapper-validation@v4
+      - uses: gradle/actions/wrapper-validation@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
           java-version: "21"
 
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
 
       - name: Unit tests, lint and release build
         run: ./gradlew --no-daemon testDebugUnitTest testReleaseUnitTest lintDebug lintRelease assembleRelease
 
       - name: Upload test and lint reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: reports
           path: |

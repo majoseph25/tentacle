@@ -15,6 +15,11 @@ updates:
       # Later Compose BOMs need compileSdk 37 and AGP 9.1 (see docs/DEPENDENCIES.md). Move together with AGP 9.
       - dependency-name: "androidx.compose:compose-bom"
         versions: [">=2026.08.00"]
+      # androidx.core 1.19+ needs compileSdk 37 and AGP 9.1 (1.18.x still works). Move together with AGP 9.
+      - dependency-name: "androidx.core:core"
+        versions: [">=1.19.0"]
+      - dependency-name: "androidx.core:core-ktx"
+        versions: [">=1.19.0"]
       # AGP 9 is a major migration (new DSL); do it deliberately, not via a bot PR.
       - dependency-name: "com.android.application"
         update-types: ["version-update:semver-major"]

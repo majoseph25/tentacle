@@ -2,6 +2,14 @@
 
 All notable changes to Tentacle. Versions follow `versionName` / `versionCode` in `app/build.gradle.kts`.
 
+## Repository (2026-09-29)
+
+- **Published to a private GitHub repository** with Android CI, Dependabot, issue and pull-request
+  templates and a contributing guide.
+- **CI actions pinned to commit SHAs.** Dependabot alerts and security updates are on.
+- **`scripts/github-hardening.ps1`** turns on the remaining protections once the repository is public:
+  private vulnerability reporting, secret scanning, push protection, and a ruleset protecting `main`.
+
 ## 0.5.0 (build 5) — 2026-09-28
 
 ### Changed

@@ -133,12 +133,27 @@ Each change since review 4 was assessed for security impact:
   usernames, device names or personal paths.
 - **Commits** use the owner's GitHub no-reply address, not a personal email.
 
-**Recommended before making the repository public:**
-- **Pin the GitHub Actions to commit SHAs** instead of major-version tags (`@v4`), so an upstream tag
-  can't change what runs.
-- **Enable GitHub's security features** in the repository's Settings: private vulnerability reporting,
-  secret scanning and push protection, and Dependabot alerts. Some are only free for public repositories.
-- **Protect `main`:** require pull requests and passing CI before merging.
+**Hardening before going public (2026-09-29):**
+
+| Item | Status |
+|---|---|
+| Pin GitHub Actions to commit SHAs | **Done.** All five steps are pinned to full SHAs of the latest releases: checkout v7.0.1, setup-java v6.0.1, upload-artifact v7.0.1, gradle/actions v6.4.0. Version comments let Dependabot keep them current. |
+| Dependabot alerts and security updates | **On.** |
+| Private vulnerability reporting | **After going public.** GitHub offers it only on public repositories. |
+| Secret scanning and push protection | **After going public.** Not available for private repositories on the Free plan. |
+| Protect `main` (ruleset) | **After going public**, or with GitHub Pro. GitHub: "Upgrade to GitHub Pro or make this repository public". The ruleset is ready: no deleting or force-pushing `main`, changes by pull request, and Android CI's `build` check must pass. Repository admins can bypass it, so the owner is never locked out. |
+
+The three pending items are one command away. After making the repository public, run:
+
+```bash
+powershell -ExecutionPolicy Bypass -File scripts/github-hardening.ps1
+```
+
+It's safe to re-run. It reports what was enabled and anything GitHub refused.
+
+**Dependabot's first run.** It proposed `androidx.core` 1.19.1, and CI rejected it: 1.19+ needs compileSdk
+37 and AGP 9.1. Dependabot now skips `androidx.core` ≥ 1.19 (1.18.x is still compatible), matching the
+existing Compose rule.
 
 ## Earlier reviews (0.1.0–0.2.0)
 

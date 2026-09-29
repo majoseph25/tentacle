@@ -59,7 +59,17 @@ Run all of these before every change is merged:
 - **Permissions:** read-only (`contents: read`), and no secrets.
 
 Dependabot (`.github/dependabot.yml`) opens weekly update pull requests for Gradle and GitHub Actions
-dependencies. It skips Compose BOMs that need compileSdk 37, and AGP major versions.
+dependencies. It skips Compose BOMs and `androidx.core` versions that need compileSdk 37, and AGP major
+versions. The workflow's actions are pinned to commit SHAs, with a version comment Dependabot updates.
+
+**Repository security settings** are applied by `scripts/github-hardening.ps1`:
+- Dependabot alerts and security updates,
+- private vulnerability reporting,
+- secret scanning and push protection,
+- a ruleset protecting `main`.
+
+Some of these need the repository to be public (or GitHub Pro); the script reports which. Run it again
+after changing visibility.
 
 ## Running on a phone
 
