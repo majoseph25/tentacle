@@ -106,7 +106,7 @@ off.
 | "Can't reach the server" | Check the address and that your phone can reach the server (Wi-Fi vs mobile data). A home address like `192.168.x.x` only works at home unless you use a VPN such as Tailscale. |
 | "Server redirected to …" | Enter the address it names. Tentacle doesn't follow redirects, for security. |
 | A song won't play | Tentacle converts files your phone can't decode automatically. If it still fails, try a lower streaming quality, and check the file plays in the Jellyfin web app. |
-| Tentacle isn't in Android Auto | Enable **Unknown sources** (above) if you installed it yourself. Then open **Settings → Android Auto connections** on the phone. A "Rejected" entry shows which app was refused. Please report it. |
+| Tentacle isn't in Android Auto, or the car says it can't run | If you installed it yourself, enable **Unknown sources** (above), then reconnect to the car. Music can still play through the car's media controls while it's hidden, which is why it may look half-working. Still missing? Open **Settings → Android Auto connections** on the phone. An empty list means Android Auto never asked Tentacle for its library (it's still hidden). A "Rejected" entry shows which app was refused: please report it. |
 | Nothing under Recently played | Jellyfin updates it as you listen. Play a song for more than a few seconds. |
 | Album art missing | Tap **Clear cache** in Settings. Covers are downloaded again. |
 

@@ -2,6 +2,21 @@
 
 All notable changes to Tentacle. Versions follow `versionName` / `versionCode` in `app/build.gradle.kts`.
 
+## 0.5.1 (build 6) — 2026-09-29
+
+### Fixed
+- **"All songs" in Android Auto.** On the car's Home screen, **All songs** was drawn as a large tile with
+  its title hidden below the fold. It's now a normal list row.
+
+### Tested
+- **Android Auto,** on the Desktop Head Unit:
+  - Tentacle is listed, with its icon, and opens without autoplaying.
+  - Browsing, album artwork and playback work, and shuffle and repeat toggle.
+  - Android Auto passes the access check.
+- **In a car:** playback and steering-wheel controls work. Tentacle was missing from the car's app list
+  because Android Auto hides apps not installed from Google Play until **Unknown sources** is turned on.
+  The user guide's troubleshooting table now explains this.
+
 ## Repository (2026-09-29)
 
 - **Published on GitHub,** public since 2026-09-29 and tagged `v0.5.0`. Includes Android CI, Dependabot,

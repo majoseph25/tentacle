@@ -42,6 +42,8 @@ data class BrowseEntry(
     val browsableStyle: ContentStyle? = null,
     /** How this node's playable children are drawn. */
     val playableStyle: ContentStyle? = null,
+    /** How this row itself is drawn, overriding its parent's hint (e.g. a folder row among album tiles). */
+    val itemStyle: ContentStyle? = null,
     /** Shown when [artItemId] is null or its image can't be loaded. */
     val icon: IconKind = IconKind.SONG,
 ) {

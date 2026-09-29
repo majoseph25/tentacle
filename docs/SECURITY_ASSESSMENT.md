@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **App** | Tentacle 0.5.0 (build 5), Android |
+| **App** | Tentacle 0.5.1 (build 6), Android |
 | **Reviews** | Four full reviews (2026-09-27 to 2026-09-28), plus assessments of every later change |
 | **Last updated** | 2026-09-29 |
 | **Performed by** | Claude (Anthropic's AI model), working in [Claude Code](https://claude.com/claude-code) for the project owner, Mark Joseph |
@@ -208,11 +208,17 @@ powershell -ExecutionPolicy Bypass -File scripts/github-hardening.ps1
 Severity is the impact on a user of the app. Every finding below is **resolved**. "Obsolete" means the
 affected code was removed when the app became a standalone player in 0.3.0.
 
-### 6.1 After review 4 (0.5.0)
+### 6.1 After review 4 (0.5.0 and 0.5.1)
 
 | ID | Severity | Finding | Resolution |
 |---|---|---|---|
 | B5-1 | Bug (crash) | The app crashed every time it was left: the reconnect logic from B4-3 released the Media3 controller twice | References cleared before release; reconnects only after disconnects the app didn't request. Verified on the phone. |
+| B5-2 | Bug (display) | In Android Auto, Home → **All songs** was drawn as a large album-style tile with its title pushed below the fold, because Home asks for its browsable rows as a grid | The row now carries Android Auto's per-item style hint (`CONTENT_STYLE_SINGLE_ITEM_HINT` = list). Fixed in 0.5.1 and verified on the Desktop Head Unit. |
+
+**Not a code defect:** in the first car test, Tentacle was missing from the car's app list. The connection
+log was empty (Android Auto never asked for the library), and the app was sideloaded. Android Auto hides
+sideloaded media apps until **Unknown sources** is turned on in its developer settings. With it on,
+Tentacle was listed and worked. Apps installed from Google Play aren't affected.
 
 Branding, the green theme, the licence files and the GitHub setup were assessed and have no security
 impact, apart from the controls listed in [5.7](#57-repository-and-supply-chain).
@@ -295,7 +301,7 @@ impact, apart from the controls listed in [5.7](#57-repository-and-supply-chain)
 
 ## 7. Verification
 
-Latest results (0.5.0):
+Latest results (0.5.1):
 
 | Check | Result |
 |---|---|
@@ -306,15 +312,18 @@ Latest results (0.5.0):
 | Repository | No secrets or personal data: scanned before the first push, and the full git history again before going public |
 | CI on GitHub | Passing |
 | On the phone | Installs and runs. Streaming playback confirmed. The Songs crash (B4-1) and exit crash (B5-1) are fixed and re-tested. Phone screens checked by screenshot (dark mode). |
+| Android Auto (Desktop Head Unit, 2026-09-29) | Listed in the app list with its icon. Opens on Now playing without autoplaying (MA-1). Home, Albums (sort folders, year-grouped grid with artwork and placeholder icons) and an album page browse correctly. A song plays from the car. Shuffle and repeat toggle. The connection log shows Android Auto and the Google app allowed. No crashes. |
+| In a car (2026-09-29) | Playback and now-playing work, and steering-wheel buttons skip tracks. The app list needed **Unknown sources** (see [6.1](#61-after-review-4-050-and-051)). |
 
 ## 8. Open items
 
 ### 8.1 Not yet verified on a device
 
 These need a phone, a car or the Desktop Head Unit. Unit tests can't cover them:
-1. **Android Auto:** Tentacle is listed; browsing, playing, steering-wheel buttons, voice ("Hey Google,
-   play … on Tentacle") and search work. Check **Settings → Android Auto connections** afterwards: it
-   should show Android Auto as allowed.
+1. **Android Auto, remaining checks:** listing, browsing, playback, shuffle/repeat and the access rule
+   are verified ([section 7](#7-verification)). Still to check in a real car: that Tentacle is listed now
+   that Unknown sources is on, voice ("Hey Google, play … on Tentacle"), search, the Queue screen, and
+   the Artists and Playlists tabs.
 2. **The S4-1 access rule** doesn't block legitimate controllers: lock screen, notification, Bluetooth and
    headset buttons, and smartwatches.
 3. **Phone features:** search, shuffle/repeat, Up next, streaming quality, resume after a restart, the

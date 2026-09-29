@@ -156,7 +156,11 @@ class Library(private val api: JellyfinApi, private val prefs: Prefs) {
                 "shuffle:library:all", "Shuffle my library", "Random songs from your whole library",
                 playable = true, icon = IconKind.SHUFFLE,
             ),
-            BrowseEntry("songs", "All songs", "A–Z", browsable = true, icon = IconKind.SONG, browsableStyle = ContentStyle.LIST),
+            // Home draws its browsable rows as tiles (for the Recently added albums); keep this one a list row.
+            BrowseEntry(
+                "songs", "All songs", "A–Z", browsable = true, icon = IconKind.SONG,
+                browsableStyle = ContentStyle.LIST, itemStyle = ContentStyle.LIST,
+            ),
         ) +
             trackEntries(recent, "recent:all", showAlbum = true).map { it.copy(group = "Recently played") } +
             added.map { albumEntry(it, group = "Recently added") }

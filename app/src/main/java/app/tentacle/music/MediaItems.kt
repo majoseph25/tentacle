@@ -20,6 +20,7 @@ object MediaItems {
     const val CONTENT_STYLE_BROWSABLE_HINT = "android.media.browse.CONTENT_STYLE_BROWSABLE_HINT"
     const val CONTENT_STYLE_PLAYABLE_HINT = "android.media.browse.CONTENT_STYLE_PLAYABLE_HINT"
     const val CONTENT_STYLE_GROUP_TITLE_HINT = "android.media.browse.CONTENT_STYLE_GROUP_TITLE_HINT"
+    const val CONTENT_STYLE_SINGLE_ITEM_HINT = "android.media.browse.CONTENT_STYLE_SINGLE_ITEM_HINT"
 
     /** Marks a queue item that is already being transcoded (so a format error isn't retried forever). */
     const val EXTRA_TRANSCODED = "app.tentacle.music.TRANSCODED"
@@ -42,6 +43,7 @@ object MediaItems {
             e.group?.let { putString(CONTENT_STYLE_GROUP_TITLE_HINT, it) }
             e.browsableStyle?.let { putInt(CONTENT_STYLE_BROWSABLE_HINT, it.value) }
             e.playableStyle?.let { putInt(CONTENT_STYLE_PLAYABLE_HINT, it.value) }
+            e.itemStyle?.let { putInt(CONTENT_STYLE_SINGLE_ITEM_HINT, it.value) }
         }
         val metadata = MediaMetadata.Builder()
             .setTitle(e.title)
