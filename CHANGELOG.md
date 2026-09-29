@@ -9,6 +9,12 @@ All notable changes to Tentacle. Versions follow `versionName` / `versionCode` i
 - **CI actions pinned to commit SHAs.** Dependabot alerts and security updates are on.
 - **`scripts/github-hardening.ps1`** turns on the remaining protections once the repository is public:
   private vulnerability reporting, secret scanning, push protection, and a ruleset protecting `main`.
+- **Documentation reorganized.**
+  - The security assessment moved to `docs/` and is now organized by topic: threat model, controls,
+    findings and open items.
+  - The README is a project front page, with a map of all the documents.
+  - `docs/README.md` points each kind of reader to the right guide.
+  - The credits note that Tentacle was built with Claude Code.
 
 ## 0.5.0 (build 5) — 2026-09-28
 
