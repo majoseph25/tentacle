@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Fails if gradle/wrapper/gradle-wrapper.jar isn't an official Gradle release (supply-chain check).
       - uses: gradle/actions/wrapper-validation@v4
