@@ -66,10 +66,13 @@ versions. The workflow's actions are pinned to commit SHAs, with a version comme
 - Dependabot alerts and security updates,
 - private vulnerability reporting,
 - secret scanning and push protection,
+- code scanning (CodeQL default setup),
 - a ruleset protecting `main`.
 
-Some of these need the repository to be public (or GitHub Pro); the script reports which. Run it again
-after changing visibility.
+The script is safe to run again at any time, and reports anything GitHub refuses.
+
+**`main` is protected.** Every change goes through a pull request and must pass the Android CI `build`
+check before merging. Force-pushes and deleting `main` are blocked.
 
 ## Running on a phone
 
@@ -207,4 +210,3 @@ aapt2 dump xmltree --file AndroidManifest.xml app-release.apk
   notes).
 - **On-device checks:** Android Auto in a car, Bluetooth and the lock screen. See
   [§8.1 of the security assessment](SECURITY_ASSESSMENT.md#81-not-yet-verified-on-a-device).
-- **Repository settings:** after making the repository public, run `scripts/github-hardening.ps1`.

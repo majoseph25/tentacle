@@ -190,11 +190,14 @@ item is rebuilt from a validated item ID. A request for more than 500 items is c
 | Dependabot alerts and security updates | On |
 | `.gitignore` excludes local config, build output, keystores, signing properties, Play keys and backups | On |
 | Commits use the owner's GitHub no-reply address | On |
-| Private vulnerability reporting | **Pending:** needs a public repository |
-| Secret scanning and push protection | **Pending:** needs a public repository (or a paid plan) |
-| Ruleset protecting `main` (pull requests, passing CI, no force-push or deletion; admins can bypass) | **Pending:** needs a public repository or GitHub Pro |
+| Private vulnerability reporting | On |
+| Secret scanning and push protection | On |
+| Ruleset protecting `main` (pull requests, passing CI, no force-push or deletion; admins can bypass) | On |
+| Code scanning (CodeQL default setup) | On |
+| Full git history scanned for secrets and personal data before the repository went public | Done (2026-09-29, clean) |
 
-The three pending items are enabled by one command after the repository is made public:
+The repository went public on 2026-09-29. The GitHub settings above are applied by
+`scripts/github-hardening.ps1`, which is safe to run again at any time to check or restore them:
 
 ```bash
 powershell -ExecutionPolicy Bypass -File scripts/github-hardening.ps1
@@ -300,7 +303,7 @@ Latest results (0.5.0):
 | Android lint | 0 errors in debug and release. Remaining warnings are only newer library versions and translatable-string notes. |
 | Dependencies | **0 known vulnerabilities** in 130 shipped libraries (OSV, 2026-09-28). Details in [DEPENDENCIES.md](DEPENDENCIES.md). |
 | Release APK | Not debuggable. No backup. Explicit network security config. targetSdk 36. Diagnostic code absent. Exported components as in [section 4](#4-attack-surface). |
-| Repository | No secrets or personal data (scanned before the first push) |
+| Repository | No secrets or personal data: scanned before the first push, and the full git history again before going public |
 | CI on GitHub | Passing |
 | On the phone | Installs and runs. Streaming playback confirmed. The Songs crash (B4-1) and exit crash (B5-1) are fixed and re-tested. Phone screens checked by screenshot (dark mode). |
 
@@ -338,7 +341,7 @@ These need a phone, a car or the Desktop Head Unit. Unit tests can't cover them:
 |---|---|
 | Licence | **Done:** Apache-2.0, `NOTICE` credits Mark Joseph, name and logo reserved |
 | Name and branding | **Done:** own name (Tentacle) and logo, and "unofficial, not affiliated with Jellyfin" stated. Keep the store listing the same, and don't use Jellyfin's logo. |
-| Repository hardening | **Pending:** run `scripts/github-hardening.ps1` after making the repository public ([5.7](#57-repository-and-supply-chain)) |
+| Repository hardening | **Done:** public since 2026-09-29, with every control in [5.7](#57-repository-and-supply-chain) on |
 | Open-source licence notices in the app | **To do:** an in-app licences screen, or a `THIRD_PARTY_LICENSES` file |
 | Privacy policy and Data safety form | **To do:** fill in [PRIVACY.md](../PRIVACY.md), host it at a public URL, and complete Play's Data safety form |
 | Signing | **To do:** an upload key kept out of the repository, Play App Signing, and an App Bundle |
