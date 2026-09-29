@@ -1,110 +1,100 @@
-# Tentacle
+<p align="center">
+  <img src="app/src/main/res/drawable-nodpi/logo_full.png" width="260" alt="Tentacle logo">
+</p>
 
-**Your Jellyfin music, on your phone and natively in Android Auto.**
+<p align="center">
+  <b>Your Jellyfin music, on your phone and natively in Android Auto.</b>
+</p>
 
-Tentacle is an unofficial music player for [Jellyfin](https://jellyfin.org) servers. It streams from your
-own server and plays the music itself, so it works in the car without any other app running. It isn't
-affiliated with the Jellyfin project.
+<p align="center">
+  <a href="https://github.com/majoseph25/tentacle/actions/workflows/android.yml"><img src="https://github.com/majoseph25/tentacle/actions/workflows/android.yml/badge.svg" alt="Android CI"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-green.svg" alt="License: Apache-2.0"></a>
+  <img src="https://img.shields.io/badge/Android-8.0%2B-green.svg" alt="Android 8.0+">
+  <a href="https://claude.com/claude-code"><img src="https://img.shields.io/badge/built%20with-Claude%20Code-D97757.svg" alt="Built with Claude Code"></a>
+</p>
+
+Tentacle is a music player for [Jellyfin](https://jellyfin.org) servers. It streams straight from your own
+server and plays the music itself, both on your phone and in the car through Android Auto, so no other app
+needs to be running.
+
+> Tentacle is an independent, unofficial app. It isn't affiliated with or endorsed by the Jellyfin project.
 
 ## Features
 
-- **Phone app:**
-  - **Now playing:** artwork, seek bar, previous/play/next, shuffle, repeat, and Up next (tap a song to jump to it).
-  - **Library:** tabs for Home, **Songs** (your whole library A–Z, loaded as you scroll), Albums, Artists and
-    Playlists. Albums can be sorted A–Z, by artist, by newest release or by recently added. Album tracks are
-    numbered with durations and a heading per disc.
-  - **Search** at the top of the Library: songs, artists and albums as you type. A song plays followed by
-    the rest of its album.
-  - **Mini player** above the tabs while you browse.
-- **Android Auto:** the same library as tabs (Home, Albums, Artists, Playlists; all songs are under Home),
-  now playing with shuffle and repeat, Up next, search, and voice ("Hey Google, play … on Tentacle").
-- **Everywhere else:** lock-screen and notification controls, Bluetooth and steering-wheel buttons,
-  pause when headphones disconnect, and resuming where you left off.
-- **Streaming quality:** Original (no transcoding), or 320, 192 or 128 kbps MP3 to save mobile data.
-  Files the phone can't decode are transcoded automatically.
-- **Plays nicely with your server:** reports playback, so Jellyfin's Recently played, play counts and
-  dashboard stay accurate.
+| | |
+|---|---|
+| 🎵 **Now playing** | Artwork, seek bar, previous/play/next, shuffle, repeat, and Up next |
+| 📚 **Library** | Home, Songs (all of them, A–Z), Albums (four sort orders), Artists and Playlists |
+| 🔎 **Search** | Songs, artists and albums as you type |
+| 🚗 **Android Auto** | The same library as car tabs, plus now playing, Up next, search and voice ("Hey Google, play … on Tentacle") |
+| 🎧 **Everywhere** | Lock screen and notification, Bluetooth, headset and steering-wheel buttons; pauses when headphones disconnect; resumes where you left off |
+| 📶 **Streaming quality** | Original, or 320 / 192 / 128 kbps MP3 to save data. Files the phone can't play are converted automatically. |
+| 📊 **Server-friendly** | Reports what you play, so Jellyfin's Recently played and play counts stay accurate |
+| 🔒 **Private** | Talks only to your server: no ads, analytics or tracking |
 
-## Build and install
+## Project status
 
-1. Install [Android Studio](https://developer.android.com/studio). Set the Gradle JDK to 17 or 21
-   (**Settings > Build, Execution, Deployment > Build Tools > Gradle**).
-2. **File > Open** this folder, let Gradle sync, plug in your phone (USB debugging on) and press **Run**.
-3. Open **Tentacle**, sign in to your Jellyfin server, and play something.
+| | |
+|---|---|
+| **Android** | Version 0.5.0. Builds and passes CI. Tested on a phone. Android Auto still needs testing in a car ([open items](docs/SECURITY_ASSESSMENT.md#8-open-items)). |
+| **iOS** | Planned: a native Swift app with CarPlay |
+| **Releases** | None yet. Build from source (below). |
 
-From the command line (the wrapper checks Gradle's SHA-256 before running it):
+## Getting started
 
-```bash
-./gradlew testDebugUnitTest lintRelease assembleRelease
-```
+1. **Build and install** from source: open this folder in [Android Studio](https://developer.android.com/studio)
+   and press **Run**. Command-line build instructions are in the [development guide](docs/DEVELOPMENT.md).
+2. **Sign in** with your Jellyfin server address, username and password.
+3. **Play** something from the Library, or tap **Shuffle my library**.
 
-- **Versions:** targets Android 16 (API 36), minimum Android 8.0 (API 26).
-- **Release builds:** shrunk with R8, not debuggable, and contain no diagnostic logging.
-- **Google Play:** build an App Bundle with `./gradlew bundleRelease` and sign it with your upload key.
-  Never commit the key; `.gitignore` covers keystores.
+For Android Auto with a self-built app, you first need to allow unknown sources in Android Auto's developer
+settings. The [user guide](docs/USER_GUIDE.md#android-auto) explains how.
 
-## Android Auto with a self-built app
+## Documentation
 
-Android Auto only lists apps from Google Play unless you allow others:
-1. In Android Auto settings, tap **Version** about 10 times to enable developer mode.
-2. Open ⋮ > **Developer settings** and turn on **Unknown sources**.
+| Document | What's in it |
+|---|---|
+| [User guide](docs/USER_GUIDE.md) | Using Tentacle on the phone and in the car, settings, troubleshooting |
+| [Architecture](docs/ARCHITECTURE.md) | How the app works: components, data flows, the Jellyfin API it uses |
+| [Development](docs/DEVELOPMENT.md) | Building, testing, debugging, CI and releasing |
+| [Security assessment](docs/SECURITY_ASSESSMENT.md) | Threat model, security controls, all review findings, open items |
+| [Dependencies](docs/DEPENDENCIES.md) | Every tool, plugin and library, with exact versions and licences |
+| [Changelog](CHANGELOG.md) | Version history |
 
-To test without a car, use the [Desktop Head Unit](https://developer.android.com/training/cars/testing/dhu).
-If Tentacle doesn't show up in the car, open **Settings → Android Auto connections** in the phone app. It
-lists which apps asked to connect and whether they were allowed.
+Also: [contributing](CONTRIBUTING.md) · [security policy](SECURITY.md) · [privacy policy](PRIVACY.md) ·
+[branding](branding/README.md)
 
-## How it works
+## Security
 
-```
-Phone app ─┐
-Android Auto ─┼──> PlaybackService (Media3 session + ExoPlayer) ──stream──> your Jellyfin server
-Bluetooth, lock screen ─┘                    │
-                                             └──> playback reports (Recently played, play counts)
-```
+- **Your login:** the password is never stored. The login token is sent only to your own server, never in
+  a URL.
+- **Other apps:** only Android Auto, Google Assistant and the system can browse your library or choose
+  what plays. Other apps are refused.
+- **Reviews:** four full security reviews so far, with every finding fixed. The details, including what's
+  still open, are in the [security assessment](docs/SECURITY_ASSESSMENT.md).
 
-- **Browse tree:** `Library` builds the tree that both the phone app and Android Auto show.
-- **Starting playback:** tapping something sends only its ID. The service turns that into stream URLs for
-  the signed-in server, so no caller can make the player fetch an arbitrary address.
-- **Streams:** stream URLs contain no credentials. An OkHttp interceptor adds the access token as a
-  header, and only on requests to your server.
-
-## Known limits
-
-- **Android Auto lists:** they have no paging, so lists in the car are capped at 200 entries, and large
-  libraries get an A–Z picker. The phone app pages through everything.
-- **Queue length:** starting playback builds a queue of up to 150 songs around your choice.
-- **Plain HTTP:** traffic is unencrypted if your server address is `http://`. Use HTTPS when the server is
-  reachable from outside your network. The app warns before signing in to a public `http://` address.
-  Tailscale addresses count as private.
-- **Voice from the phone:** "Hey Google, play … on Tentacle" works in the car, but not from the phone
-  outside Android Auto.
+Found a vulnerability? Please report it privately, as described in [SECURITY.md](SECURITY.md).
 
 ## License
 
 Copyright 2026 Mark Joseph. Licensed under the [Apache License 2.0](LICENSE).
 
-You can use, modify and redistribute Tentacle, including in forks, on these conditions:
-- **Keep the notices.** Keep the copyright notices, the [`NOTICE`](NOTICE) file crediting the original
-  author, and the licence.
-- **Mark your changes.** State the changes you've made.
+You're free to use, modify and share Tentacle, including in forks, as long as you:
+- keep the copyright notices and the [`NOTICE`](NOTICE) file crediting the original author,
+- include the licence, and
+- mark the changes you make.
 
-The **Tentacle name and logo aren't covered by the licence**; all rights are reserved. A fork must use its
-own name and icon.
+The **Tentacle name and logo are not covered by the licence**; all rights are reserved. Forks must use
+their own name and icon.
 
-## Documentation
+## Credits
 
-- [User guide](docs/USER_GUIDE.md): using the app on the phone and in the car
-- [Architecture](docs/ARCHITECTURE.md): how it's built, data flows, security model
-- [Development](docs/DEVELOPMENT.md): building, testing, debugging and releasing
-- [Dependencies](docs/DEPENDENCIES.md): every tool, plugin and library, with versions and licences
-- [Changelog](CHANGELOG.md): version history
-- [Contributing](CONTRIBUTING.md): how to report bugs and send changes
+**Created by Mark Joseph.**
 
-## Security and privacy
+Built with **[Claude Code](https://claude.com/claude-code)**, Anthropic's AI coding agent. Claude wrote
+most of the code, ran the security reviews and wrote this documentation, all directed, tested and
+reviewed by Mark.
 
-- [SECURITY_ASSESSMENT.md](SECURITY_ASSESSMENT.md): security reviews
-- [SECURITY.md](SECURITY.md): how to report a vulnerability
-- [PRIVACY.md](PRIVACY.md): privacy policy (draft)
-
-The project started as "Jellyfin Auto", a remote control for the official Jellyfin app. Version 0.3.0
-replaced that with a standalone player.
+The logo was created with ChatGPT. The icons are [Material Design icons](https://fonts.google.com/icons)
+(Apache-2.0). Tentacle stands on the shoulders of open-source projects listed in
+[DEPENDENCIES.md](docs/DEPENDENCIES.md), most notably AndroidX Media3, Jetpack Compose, OkHttp and Kotlin.

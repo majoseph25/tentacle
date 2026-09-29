@@ -1,4 +1,4 @@
-# Architecture
+﻿# Architecture
 
 How Tentacle is put together, how data moves through it, and why it's built the way it is.
 
@@ -7,20 +7,20 @@ How Tentacle is put together, how data moves through it, and why it's built the 
 Tentacle is a single-module Android app (`app/`, package `app.tentacle.music`) with two faces on one engine:
 
 ```
-                ┌────────────────── Tentacle process ──────────────────┐
- Phone UI ──────┤ MainActivity (Compose)                               │
- (Now playing,  │   └─ PlayerConnection ── Media3 MediaBrowser ─┐      │
-  Library,      │                                               ▼      │
-  Settings)     │                          ┌─────────────── PlaybackService ─────────────┐
-                │                          │ MediaLibrarySession  ◄── access control      │
- Android Auto ──┼── (binds to service) ──► │   callback            (ClientAccess)        │
- Assistant      │                          │ ExoPlayer ── OkHttp ──► stream  ─────────────┼──► Jellyfin
- Lock screen,   │                          │ Library (browse tree) ──► REST API ──────────┼──► server
- notification,  │                          │ PlaybackReporter ──► playback reports ───────┼──►
- Bluetooth ─────┼── (system media session) │                                              │
-                │                          └──────────────────────────────────────────────┘
-                │  ArtworkProvider (content://) ── cached album art ◄── REST API
-                └──────────────────────────────────────────────────────┘
+                â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Tentacle process â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+ Phone UI â”€â”€â”€â”€â”€â”€â”¤ MainActivity (Compose)                               â”‚
+ (Now playing,  â”‚   â””â”€ PlayerConnection â”€â”€ Media3 MediaBrowser â”€â”      â”‚
+  Library,      â”‚                                               â–¼      â”‚
+  Settings)     â”‚                          â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ PlaybackService â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+                â”‚                          â”‚ MediaLibrarySession  â—„â”€â”€ access control      â”‚
+ Android Auto â”€â”€â”¼â”€â”€ (binds to service) â”€â”€â–º â”‚   callback            (ClientAccess)        â”‚
+ Assistant      â”‚                          â”‚ ExoPlayer â”€â”€ OkHttp â”€â”€â–º stream  â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¼â”€â”€â–º Jellyfin
+ Lock screen,   â”‚                          â”‚ Library (browse tree) â”€â”€â–º REST API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¼â”€â”€â–º server
+ notification,  â”‚                          â”‚ PlaybackReporter â”€â”€â–º playback reports â”€â”€â”€â”€â”€â”€â”€â”¼â”€â”€â–º
+ Bluetooth â”€â”€â”€â”€â”€â”¼â”€â”€ (system media session) â”‚                                              â”‚
+                â”‚                          â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+                â”‚  ArtworkProvider (content://) â”€â”€ cached album art â—„â”€â”€ REST API
+                â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 ```
 
 - **One player.** `PlaybackService` owns the only player. The phone UI, Android Auto, the lock screen,
@@ -42,33 +42,33 @@ Tentacle is a single-module Android app (`app/`, package `app.tentacle.music`) w
 
 ```
 app/src/main/java/app/tentacle/music/
-├── PlaybackService.kt   Media3 MediaLibraryService: player, session callback, access control, queue resolution
-├── PlaybackReporter.kt  Reports start/progress/stop to the server; saves the queue for resuming
-├── Library.kt           Builds the browse tree and resolves media ids into tracks (queue building)
-├── MediaItems.kt        Converts browse rows and Jellyfin items into Media3 MediaItems (stream URL, artwork, hints)
-├── JellyfinApi.kt       REST client (auth, library, images, reports), stream URLs, auth interceptor, URL rules
-├── ClientAccess.kt      Decides which apps are trusted (browse / choose what plays / read artwork)
-├── ArtworkProvider.kt   content:// artwork for Android Auto, the notification and the phone UI
-├── Account.kt           Sign-in (preflight checks, HTTP warning), sign-out and token revocation
-├── Prefs.kt             App-private settings: server, token, quality, resume state, connection log
-├── Models.kt            BrowseEntry, StreamQuality, ContentStyle, IconKind, id validation
-├── Paging.kt            Overflow-safe paging helpers (Media3 rejects oversized pages)
-├── AppScope.kt          Process-lifetime coroutine scope for fire-and-forget server calls
-└── ui/
-    ├── MainActivity.kt      Scaffold, bottom navigation, mini player, sign-in gate
-    ├── PlayerConnection.kt  Media3 MediaBrowser wrapper exposing player state as a StateFlow
-    ├── NowPlayingScreen.kt  Artwork, details, seek bar, controls, shuffle/repeat, Up next
-    ├── LibraryScreen.kt     Search, tabs, Songs (paged), grids, section headers, drill-down
-    ├── SettingsScreen.kt    Account, streaming quality, cache, Android Auto connections, version
-    ├── SignInScreen.kt      Server/username/password form
-    ├── Artwork.kt           Bounded, cached artwork loading for Compose
-    └── Theme.kt             Material 3 green theme from the logo (light and dark, no wallpaper colours)
+â”œâ”€â”€ PlaybackService.kt   Media3 MediaLibraryService: player, session callback, access control, queue resolution
+â”œâ”€â”€ PlaybackReporter.kt  Reports start/progress/stop to the server; saves the queue for resuming
+â”œâ”€â”€ Library.kt           Builds the browse tree and resolves media ids into tracks (queue building)
+â”œâ”€â”€ MediaItems.kt        Converts browse rows and Jellyfin items into Media3 MediaItems (stream URL, artwork, hints)
+â”œâ”€â”€ JellyfinApi.kt       REST client (auth, library, images, reports), stream URLs, auth interceptor, URL rules
+â”œâ”€â”€ ClientAccess.kt      Decides which apps are trusted (browse / choose what plays / read artwork)
+â”œâ”€â”€ ArtworkProvider.kt   content:// artwork for Android Auto, the notification and the phone UI
+â”œâ”€â”€ Account.kt           Sign-in (preflight checks, HTTP warning), sign-out and token revocation
+â”œâ”€â”€ Prefs.kt             App-private settings: server, token, quality, resume state, connection log
+â”œâ”€â”€ Models.kt            BrowseEntry, StreamQuality, ContentStyle, IconKind, id validation
+â”œâ”€â”€ Paging.kt            Overflow-safe paging helpers (Media3 rejects oversized pages)
+â”œâ”€â”€ AppScope.kt          Process-lifetime coroutine scope for fire-and-forget server calls
+â””â”€â”€ ui/
+    â”œâ”€â”€ MainActivity.kt      Scaffold, bottom navigation, mini player, sign-in gate
+    â”œâ”€â”€ PlayerConnection.kt  Media3 MediaBrowser wrapper exposing player state as a StateFlow
+    â”œâ”€â”€ NowPlayingScreen.kt  Artwork, details, seek bar, controls, shuffle/repeat, Up next
+    â”œâ”€â”€ LibraryScreen.kt     Search, tabs, Songs (paged), grids, section headers, drill-down
+    â”œâ”€â”€ SettingsScreen.kt    Account, streaming quality, cache, Android Auto connections, version
+    â”œâ”€â”€ SignInScreen.kt      Server/username/password form
+    â”œâ”€â”€ Artwork.kt           Bounded, cached artwork loading for Compose
+    â””â”€â”€ Theme.kt             Material 3 green theme from the logo (light and dark, no wallpaper colours)
 app/src/main/res/
-├── drawable/            Launcher icon, notification icon, Material icons (white vectors)
-├── xml/automotive_app_desc.xml     Declares the app as an Android Auto media app
-├── xml/network_security_config.xml System CAs only; cleartext allowed for LAN servers
-├── xml/data_extraction_rules.xml   Excludes all data from cloud backup and device transfer
-├── values/, values-night/          App name, launch theme (light/dark)
+â”œâ”€â”€ drawable/            Launcher icon, notification icon, Material icons (white vectors)
+â”œâ”€â”€ xml/automotive_app_desc.xml     Declares the app as an Android Auto media app
+â”œâ”€â”€ xml/network_security_config.xml System CAs only; cleartext allowed for LAN servers
+â”œâ”€â”€ xml/data_extraction_rules.xml   Excludes all data from cloud backup and device transfer
+â”œâ”€â”€ values/, values-night/          App name, launch theme (light/dark)
 app/src/test/java/app/tentacle/music/  JVM unit tests (security rules, streaming, paging, UI logic)
 ```
 
@@ -76,7 +76,7 @@ app/src/test/java/app/tentacle/music/  JVM unit tests (security rules, streaming
 
 ### Signing in
 
-1. `SignInScreen` → `Account.signIn(server, user, password)`.
+1. `SignInScreen` â†’ `Account.signIn(server, user, password)`.
 2. `Account.preflight` runs checks that need no network:
    - the fields are filled in and the address parses,
    - an address without a scheme gets `http://` for LAN hosts and `https://` otherwise,
@@ -97,16 +97,16 @@ app/src/test/java/app/tentacle/music/  JVM unit tests (security rules, streaming
 5. The result is trimmed to the requested page. Media3 treats an oversized page as a fatal error.
 
 The phone app's Songs tab is paged on the server (`StartIndex`/`Limit`, 100 per page). Android Auto
-doesn't page: it gets whole lists capped at 200, or A–Z pickers for large libraries.
+doesn't page: it gets whole lists capped at 200, or Aâ€“Z pickers for large libraries.
 
 ### Media ID scheme
 
 | ID | Meaning |
 |---|---|
 | `root` | The tabs: `home`, `albums`, `artists`, `playlists`, plus `songs` for the phone app. |
-| `songs` | All songs A–Z. Paged for the phone; a list or A–Z picker in the car. |
+| `songs` | All songs Aâ€“Z. Paged for the phone; a list or Aâ€“Z picker in the car. |
 | `sort:albums:<name\|artist\|year\|added>` | Albums in one sort order, with section headers. |
-| `az:<albums\|artists\|songs>:<letter>` | One letter of an A–Z picker (`#` means non-letters). |
+| `az:<albums\|artists\|songs>:<letter>` | One letter of an Aâ€“Z picker (`#` means non-letters). |
 | `album:ID`, `artist:ID`, `playlist:ID` | Containers. |
 | `track:ID\|<ctx>` | A track, plus the queue it belongs to (`album:ID`, `playlist:ID`, `artist:ID`, `songs:<index>`, `songsaz:<letter>`, `recent:all`). |
 | `ctx:<ctx>`, `shuffle:<ctx>` | "Play all" / "Shuffle" rows. `ctx` may also be `library:all` (150 random songs). |
@@ -126,7 +126,7 @@ rules out path traversal.
    - **a list of raw item IDs:** `JellyfinApi.itemsByIds`, capped at 500.
 3. `MediaItems.track` builds each queue item: metadata, artwork and a **stream URL with no credentials**.
    - Original quality: `/Audio/{id}/stream?static=true`.
-   - Transcoded: `/Audio/{id}/stream.mp3?audioCodec=mp3&audioBitRate=…&static=false`.
+   - Transcoded: `/Audio/{id}/stream.mp3?audioCodec=mp3&audioBitRate=â€¦&static=false`.
 4. ExoPlayer streams through `OkHttpDataSource`, which uses `JellyfinApi.streamingClient`. Its
    `AuthInterceptor` adds the `Authorization` header only when the scheme, host, port and base path match
    the signed-in server. HTTP(S) is the only data source.
@@ -163,7 +163,7 @@ a 100-character query. Songs play in the context of their album. The phone debou
 | Tentacle itself (UI, notification) | Own UID | Everything |
 | Trusted apps (see `ClientAccess`) | System-verified UID | Browse, search, choose what plays, read artwork, control playback |
 | The system's combined legacy controller (Android 8 lock screen, Bluetooth and headset buttons) | Media3 legacy package name | Play/pause/skip/seek on what's already playing |
-| Anything else | | Refused (logged under Settings → Android Auto connections) |
+| Anything else | | Refused (logged under Settings â†’ Android Auto connections) |
 
 `ClientAccess` trusts these, following Google's reference app, UAMP:
 - this app and the system,
@@ -187,7 +187,7 @@ Being preinstalled isn't enough on its own, because many phones ship third-party
   - sign-out revokes it on the server and clears the art cache and resume state.
 - **Logging:** diagnostic logging exists only in debug builds; release builds log only error types.
 
-The full security review history is in [SECURITY_ASSESSMENT.md](../SECURITY_ASSESSMENT.md).
+The full security review history is in [SECURITY_ASSESSMENT.md](SECURITY_ASSESSMENT.md).
 
 ## Jellyfin API endpoints
 
@@ -198,7 +198,7 @@ The full security review history is in [SECURITY_ASSESSMENT.md](../SECURITY_ASSE
 | GET | `/Items` | Albums, songs, recently played or added, search, items by ID |
 | GET | `/Artists/AlbumArtists` | Artists tab |
 | GET | `/Playlists/{id}/Items` | Playlist tracks |
-| GET | `/Items/{id}/Images/Primary` | Album art (≤ 512 px, JPEG) |
+| GET | `/Items/{id}/Images/Primary` | Album art (â‰¤ 512 px, JPEG) |
 | GET | `/Audio/{id}/stream` (`static=true`) | Original-quality streaming |
 | GET | `/Audio/{id}/stream.mp3` | Transcoded streaming |
 | POST | `/Sessions/Capabilities/Full` | Registering as an audio player |
@@ -237,7 +237,7 @@ The token is left out when signing in.
 
 ## Known limits
 
-- **Car lists:** Android Auto can't page, so car lists are capped at 200, and large libraries get A–Z
+- **Car lists:** Android Auto can't page, so car lists are capped at 200, and large libraries get Aâ€“Z
   pickers.
 - **Queue length:** queues started from the library hold at most 150 songs.
 - **Transcoding:** only MP3 (fallback and reduced-quality streams).

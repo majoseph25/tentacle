@@ -162,7 +162,12 @@ adb shell dumpsys media_session
   `minAndroidGradlePluginVersion` first. That's why Compose is held at BOM 2026.06.01. After upgrading,
   update [DEPENDENCIES.md](DEPENDENCIES.md) and re-run the vulnerability check.
 
-## Security checks before a release
+## Releasing
+
+Everything still outstanding before a public release is tracked in
+[§8.3 of the security assessment](SECURITY_ASSESSMENT.md#83-before-a-public-or-store-release).
+
+### 1. Security checks
 
 1. Run the full checks above (tests and lint, both variants).
 2. Check dependencies against [OSV](https://osv.dev) (see [DEPENDENCIES.md](DEPENDENCIES.md#regenerating-this-page)).
@@ -174,9 +179,9 @@ aapt2 dump xmltree --file AndroidManifest.xml app-release.apk
 ```
 
 4. Scan the repository for secrets and personal data.
-5. Update [SECURITY_ASSESSMENT.md](../SECURITY_ASSESSMENT.md).
+5. Update the [security assessment](SECURITY_ASSESSMENT.md).
 
-## Releasing to Google Play
+### 2. Google Play
 
 1. **Bump the version:** `versionCode` (must increase) and `versionName` in `app/build.gradle.kts`, and
    add an entry to [CHANGELOG.md](../CHANGELOG.md).
@@ -194,11 +199,12 @@ aapt2 dump xmltree --file AndroidManifest.xml app-release.apk
    use Jellyfin's logo (Jellyfin's [branding guidelines](https://jellyfin.org/docs/general/contributing/branding/)).
 6. **Target API:** Play requires `targetSdk` 36 for new apps and updates. Check each year's new deadline.
 
-## Open items before the first public release
+### 3. Still open before the first public release
 
 - **Licence notices:** add an in-app "Open-source licences" screen or a `THIRD_PARTY_LICENSES` file.
   [DEPENDENCIES.md](DEPENDENCIES.md) lists every library and licence.
 - **Translations:** move UI strings into `strings.xml` so the app can be translated (lint's `SetTextI18n`
   notes).
-- **On-device checks:** complete the list in [SECURITY_ASSESSMENT.md](../SECURITY_ASSESSMENT.md)
-  (Android Auto, Bluetooth, lock screen).
+- **On-device checks:** Android Auto in a car, Bluetooth and the lock screen. See
+  [§8.1 of the security assessment](SECURITY_ASSESSMENT.md#81-not-yet-verified-on-a-device).
+- **Repository settings:** after making the repository public, run `scripts/github-hardening.ps1`.
