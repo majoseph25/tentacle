@@ -35,6 +35,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.guava.future
+import kotlinx.coroutines.launch
 import org.json.JSONObject
 
 /**
@@ -99,6 +100,8 @@ class PlaybackService : MediaLibraryService() {
         setMediaNotificationProvider(
             DefaultMediaNotificationProvider.Builder(this).build().apply { setSmallIcon(R.drawable.ic_notification) },
         )
+        // Started by the car, Bluetooth or the phone app: connect Tailscale now if the settings ask for it.
+        if (prefs.isSignedIn) Tailscale.ensureAsync(this, prefs)
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? = session
@@ -148,6 +151,16 @@ class PlaybackService : MediaLibraryService() {
 
         /** Files the phone can't decode (e.g. some lossless or legacy formats) are retried as transcoded MP3 once. */
         override fun onPlayerError(error: PlaybackException) {
+            // Couldn't reach the server (e.g. left home Wi-Fi): connect Tailscale if allowed, then retry once.
+            if (error.errorCode in NETWORK_ERRORS) {
+                reconnectViaTailscale {
+                    if (player.playerError != null) {
+                        player.prepare()
+                        player.play()
+                    }
+                }
+                return
+            }
             if (error.errorCode !in FORMAT_ERRORS) return
             val item = player.currentMediaItem ?: return
             if (MediaItems.isTranscoded(item) || !isSafeId(item.mediaId)) return
@@ -204,6 +217,8 @@ class PlaybackService : MediaLibraryService() {
             if (!isTrusted(browser, record = true)) {
                 return Futures.immediateFuture(LibraryResult.ofError(SessionError.ERROR_PERMISSION_DENIED))
             }
+            // The car (or the phone app) is about to browse: start Tailscale now if the settings ask for it.
+            if (prefs.isSignedIn) Tailscale.ensureAsync(this@PlaybackService, prefs)
             // Per the Android for Cars docs, assume 4 tabs when the host sends no hint.
             rootLimit = params?.extras?.getInt(ROOT_CHILDREN_LIMIT, DEFAULT_ROOT_LIMIT)?.takeIf { it > 0 } ?: DEFAULT_ROOT_LIMIT
             val extras = Bundle().apply {
@@ -227,6 +242,7 @@ class PlaybackService : MediaLibraryService() {
             }
             val ownApp = isOwnApp(browser)
             return scope.future(Dispatchers.IO) {
+                Tailscale.awaitInFlight(TAILSCALE_WAIT_MS)
                 val serverPaged = ownApp && parentId == SONGS
                 val entries = try {
                     // Only this app's Songs tab pages on the server; everything else is built whole
@@ -236,6 +252,7 @@ class PlaybackService : MediaLibraryService() {
                         .let { if (serverPaged) it else pageOf(it, page, pageSize) }
                 } catch (e: Exception) {
                     JellyfinApi.warn("browse failed", e)
+                    reconnectViaTailscale() // lists reload by themselves if Tailscale comes up
                     listOf(BrowseEntry.message("Couldn't load. Check your connection."))
                 }
                 // Media3 treats a page larger than requested as a fatal error, so never return one.
@@ -254,6 +271,7 @@ class PlaybackService : MediaLibraryService() {
                 return Futures.immediateFuture(LibraryResult.ofError(SessionError.ERROR_PERMISSION_DENIED))
             }
             return scope.future(Dispatchers.IO) {
+                Tailscale.awaitInFlight(TAILSCALE_WAIT_MS)
                 val results = runSearch(query, fresh = true)
                 kotlinx.coroutines.withContext(Dispatchers.Main) {
                     session.notifySearchResultChanged(browser, query, results.size, params)
@@ -288,6 +306,7 @@ class PlaybackService : MediaLibraryService() {
             startIndex: Int,
             startPositionMs: Long,
         ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> = scope.future(Dispatchers.IO) {
+            Tailscale.awaitInFlight(TAILSCALE_WAIT_MS)
             val single = mediaItems.singleOrNull()
             val query = single?.requestMetadata?.searchQuery
             when {
@@ -331,6 +350,7 @@ class PlaybackService : MediaLibraryService() {
             controller: MediaSession.ControllerInfo,
             isForPlayback: Boolean,
         ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> = scope.future(Dispatchers.IO) {
+            Tailscale.awaitInFlight(TAILSCALE_WAIT_MS)
             val resume = prefs.resume() ?: throw JellyfinException("Nothing to resume")
             val items = toQueue(api.itemsByIds(resume.itemIds))
             if (items.isEmpty()) throw JellyfinException("Nothing to resume")
@@ -363,6 +383,19 @@ class PlaybackService : MediaLibraryService() {
     }
 
     private fun isOwnApp(controller: MediaSession.ControllerInfo) = controller.uid == Process.myUid()
+
+    /**
+     * The server couldn't be reached. If the Tailscale setting is on, asks Tailscale to connect; once it
+     * does, tells every browser (the car, the phone app) to reload, then runs [onConnected].
+     */
+    private fun reconnectViaTailscale(onConnected: () -> Unit = {}) {
+        if (prefs.tailscaleMode == TailscaleMode.OFF || !prefs.isSignedIn) return
+        scope.launch {
+            if (Tailscale.ensure(this@PlaybackService, prefs) != Tailscale.Outcome.CONNECTED) return@launch
+            session?.let { s -> (listOf(Library.ROOT) + ROOT_TABS).forEach { s.notifyChildrenChanged(it, Int.MAX_VALUE, null) } }
+            onConnected()
+        }
+    }
 
     /** Runs a search, reusing the last result for the same query (search, then fetch results, is one request). */
     private fun runSearch(query: String, fresh: Boolean = false): List<BrowseEntry> {
@@ -400,6 +433,19 @@ class PlaybackService : MediaLibraryService() {
 
         const val DEFAULT_ROOT_LIMIT = 4
         const val SONGS = "songs"
+        val ROOT_TABS = listOf("home", SONGS, "albums", "artists", "playlists")
+
+        /**
+         * How long a library or play request waits for a Tailscale connection already under way. Short
+         * enough to leave room for the request itself within Android Auto's 10-second limit (DR-3); if
+         * Tailscale comes up later, the lists reload by themselves.
+         */
+        const val TAILSCALE_WAIT_MS = 7_000L
+
+        val NETWORK_ERRORS = setOf(
+            PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED,
+            PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT,
+        )
 
         /** Upper bound on items one request may add, so a caller can't trigger an unbounded fetch. */
         const val MAX_QUEUE_ITEMS = 500

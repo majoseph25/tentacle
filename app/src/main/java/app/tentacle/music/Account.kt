@@ -19,7 +19,8 @@ class Account(context: Context) {
 
     sealed interface SignInResult {
         data object SignedIn : SignInResult
-        data class Failed(val message: String) : SignInResult
+        /** [unreachable]: the server didn't answer at all (worth offering Tailscale, if installed). */
+        data class Failed(val message: String, val unreachable: Boolean = false) : SignInResult
 
         /** Plain HTTP to a public address: the caller must warn and ask again with [allowInsecure]. */
         data class InsecureWarning(val host: String) : SignInResult
@@ -45,7 +46,7 @@ class Account(context: Context) {
         } catch (e: JellyfinException) {
             SignInResult.Failed("Sign-in failed: ${e.message}")
         } catch (e: IOException) {
-            SignInResult.Failed("Can't reach the server. Check the address and your connection.")
+            SignInResult.Failed("Can't reach the server. Check the address and your connection.", unreachable = true)
         } catch (e: Exception) {
             SignInResult.Failed("Sign-in failed (${e.javaClass.simpleName}).")
         }

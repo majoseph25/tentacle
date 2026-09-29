@@ -29,14 +29,15 @@ needs to be running.
 | 🚗 **Android Auto** | The same library as car tabs, plus now playing, Up next, search and voice ("Hey Google, play … on Tentacle") |
 | 🎧 **Everywhere** | Lock screen and notification, Bluetooth, headset and steering-wheel buttons; pauses when headphones disconnect; resumes where you left off |
 | 📶 **Streaming quality** | Original, or 320 / 192 / 128 kbps MP3 to save data. Files the phone can't play are converted automatically. |
+| 🌐 **Away from home** | Optional [Tailscale](https://tailscale.com) support: Tentacle turns your Tailscale VPN on when your server can't be reached, for example in the car |
 | 📊 **Server-friendly** | Reports what you play, so Jellyfin's Recently played and play counts stay accurate |
-| 🔒 **Private** | Talks only to your server: no ads, analytics or tracking |
+| 🔒 **Private** | Talks only to your server: no ads, analytics or tracking. Tailscale support only asks the Tailscale app to connect. |
 
 ## Project status
 
 | | |
 |---|---|
-| **Android** | Version 0.5.1. Builds and passes CI. Tested on a phone, on the Android Auto emulator and in a car. A few car checks are still open ([open items](docs/SECURITY_ASSESSMENT.md#8-open-items)). |
+| **Android** | Version 0.6.0. Builds and passes CI. Tested on a phone, on the Android Auto emulator and in a car. A few car checks are still open ([open items](docs/SECURITY_ASSESSMENT.md#8-open-items)). |
 | **iOS** | Planned: a native Swift app with CarPlay |
 | **Releases** | Source tagged [`v0.5.0`](https://github.com/majoseph25/tentacle/releases/tag/v0.5.0). No downloadable app yet: build from source (below). |
 

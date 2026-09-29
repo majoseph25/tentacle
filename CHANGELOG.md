@@ -2,6 +2,26 @@
 
 All notable changes to Tentacle. Versions follow `versionName` / `versionCode` in `app/build.gradle.kts`.
 
+## 0.6.0 (build 7) — 2026-09-29
+
+### Added
+- **Tailscale support (optional).** For servers you reach through Tailscale away from home.
+  - **Settings → Remote access with Tailscale:** choose **Off** (the default), **When the server can't be
+    reached** (recommended) or **Always**.
+  - **When it connects:** Tentacle asks the Tailscale app to connect when you open Tentacle, when your car
+    connects, or when a list or song can't load. Once Tailscale is up, lists reload and the song
+    resumes.
+  - **Buttons:** **Connect now** and **Open Tailscale**, plus a VPN status line.
+  - **Sign-in:** offers **Connect Tailscale and try again** when the server can't be reached.
+  - **Scope:** Tentacle only asks Tailscale to connect. It never reads your Tailscale account or traffic,
+    and never turns Tailscale off. New permission: `ACCESS_NETWORK_STATE`, to see whether a VPN is up.
+  - **Tested** on a Pixel 8a with Android 17 and Tailscale 1.102.4. Tentacle turned Tailscale on, and
+    the library loaded through it.
+
+### Fixed
+- **Garbled characters in two docs.** The architecture doc's diagrams and a line in `SECURITY.md` had
+  garbled characters from a documentation edit. Both are repaired.
+
 ## 0.5.1 (build 6) — 2026-09-29
 
 ### Fixed

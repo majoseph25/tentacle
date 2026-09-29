@@ -75,10 +75,50 @@ Music pauses if your headphones or Bluetooth disconnect.
   - **Original:** the file as stored on the server.
   - **High / Medium / Low:** 320, 192 or 128 kbps MP3, to use less mobile data.
   - The setting applies to songs you start after changing it.
+- **Remote access with Tailscale:** see [Away from home: Tailscale](#away-from-home-tailscale).
 - **Clear cache:** deletes saved album art. It's downloaded again when needed.
 - **Android Auto connections:** the apps that recently asked to connect to Tentacle, and whether they
   were allowed. See [Troubleshooting](#troubleshooting).
 - **Version:** the version you're running.
+
+### Away from home: Tailscale
+
+If your server isn't on the internet and you reach it through [Tailscale](https://tailscale.com) when
+you're out, Tentacle can turn Tailscale on for you. You need the Tailscale app installed and signed in
+on your phone.
+
+In **Settings → Remote access with Tailscale**, choose when Tentacle connects it:
+
+| Option | What happens |
+|---|---|
+| **Off** (default) | Tentacle never touches Tailscale. |
+| **When the server can't be reached** | Tentacle checks your server first, and connects Tailscale only if the server doesn't answer, for example when you leave home. Recommended. |
+| **Always** | Tentacle connects Tailscale whenever you open it or your car connects. |
+
+Tentacle connects Tailscale:
+- when you open the app,
+- when your car connects,
+- when a song or a list can't load because the server can't be reached.
+
+Once Tailscale is up, lists reload and the song carries on by themselves.
+
+Other buttons:
+- **Connect now:** connects Tailscale straight away, whatever the setting.
+- **Open Tailscale:** opens the app, if you need to sign in or check something there.
+- **Signing in:** if your server can't be reached while you sign in, the sign-in screen offers
+  **Connect Tailscale and try again**.
+
+Good to know:
+- **Tentacle only asks Tailscale to connect.** It never sees your Tailscale account or traffic, and never
+  turns Tailscale off.
+- **Tentacle doesn't need Tailscale when a VPN is already on.** Android runs one VPN at a time, so if
+  another VPN is connected, turn it off first.
+- **Most reliable option:** make Tailscale your always-on VPN (Android **Settings → Network & internet →
+  VPN → ⚙ next to Tailscale → Always-on VPN**). Then it's always connected and Tentacle doesn't need to
+  do anything.
+- **If Tailscale doesn't connect** ("Tailscale didn't connect"), open the Tailscale app and connect it
+  once by hand. On some newer Android versions Tailscale can't start itself from the background until it
+  has been opened.
 
 ## Android Auto
 
@@ -107,6 +147,7 @@ off.
 | "Server redirected to …" | Enter the address it names. Tentacle doesn't follow redirects, for security. |
 | A song won't play | Tentacle converts files your phone can't decode automatically. If it still fails, try a lower streaming quality, and check the file plays in the Jellyfin web app. |
 | Tentacle isn't in Android Auto, or the car says it can't run | If you installed it yourself, enable **Unknown sources** (above), then reconnect to the car. Music can still play through the car's media controls while it's hidden, which is why it may look half-working. Still missing? Open **Settings → Android Auto connections** on the phone. An empty list means Android Auto never asked Tentacle for its library (it's still hidden). A "Rejected" entry shows which app was refused: please report it. |
+| Works at home but not when you're out | If you use Tailscale to reach your server, turn on [Tailscale in Settings](#away-from-home-tailscale). |
 | Nothing under Recently played | Jellyfin updates it as you listen. Play a song for more than a few seconds. |
 | Album art missing | Tap **Clear cache** in Settings. Covers are downloaded again. |
 

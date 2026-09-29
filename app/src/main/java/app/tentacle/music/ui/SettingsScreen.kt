@@ -3,6 +3,8 @@
 
 package app.tentacle.music.ui
 
+import android.content.ActivityNotFoundException
+import android.content.Intent
 import android.text.format.DateUtils
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -13,10 +15,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -28,6 +32,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,11 +41,16 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import app.tentacle.music.Account
 import app.tentacle.music.ArtworkProvider
 import app.tentacle.music.BuildConfig
 import app.tentacle.music.Prefs
 import app.tentacle.music.StreamQuality
+import app.tentacle.music.Tailscale
+import app.tentacle.music.TailscaleMode
+import kotlinx.coroutines.launch
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 
 @Composable
 fun SettingsScreen(
@@ -95,6 +105,8 @@ fun SettingsScreen(
             }
         }
 
+        Section("Remote access with Tailscale") { TailscaleSettings(prefs) }
+
         Section("Storage") {
             OutlinedButton(onClick = {
                 val freed = ArtworkProvider.cacheSize(context)
@@ -129,6 +141,87 @@ fun SettingsScreen(
             modifier = Modifier.fillMaxWidth(),
         )
     }
+}
+
+/**
+ * Optional: have Tentacle ask the Tailscale app to connect, for servers that are only reachable
+ * through Tailscale away from home. See [Tailscale] for what is (and isn't) done.
+ */
+@Composable
+private fun TailscaleSettings(prefs: Prefs) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val installed = remember { Tailscale.isInstalled(context) }
+    var mode by remember { mutableStateOf(prefs.tailscaleMode) }
+    var vpnUp by remember { mutableStateOf(Tailscale.isVpnActive(context)) }
+    var status by remember { mutableStateOf<String?>(null) }
+    var busy by remember { mutableStateOf(false) }
+    val tailnetServer = remember(prefs.serverUrl) {
+        prefs.serverUrl.toHttpUrlOrNull()?.host?.let(Tailscale::isTailnetAddress) == true
+    }
+    val hint = MaterialTheme.colorScheme.onSurfaceVariant
+
+    Text(
+        "Reach your server away from home through Tailscale. Tentacle asks the Tailscale app to connect; " +
+            "it never sees your Tailscale account and never turns Tailscale off.",
+        style = MaterialTheme.typography.bodySmall, color = hint,
+    )
+    Spacer(Modifier.height(4.dp))
+    if (!installed) {
+        Text("The Tailscale app isn't installed on this phone.", style = MaterialTheme.typography.bodyMedium)
+        TextButton(onClick = {
+            try {
+                context.startActivity(Intent(Intent.ACTION_VIEW, "https://play.google.com/store/apps/details?id=${Tailscale.PACKAGE}".toUri()))
+            } catch (e: ActivityNotFoundException) {
+                status = "No app store or browser found."
+            }
+        }) { Text("Get Tailscale") }
+        status?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
+        return
+    }
+    if (tailnetServer && mode == TailscaleMode.OFF) {
+        Text(
+            "Your server's address is a Tailscale address, so this is recommended.",
+            style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary,
+        )
+    }
+    TailscaleMode.entries.forEach { m ->
+        Row(
+            Modifier.fillMaxWidth().selectable(selected = m == mode, role = Role.RadioButton) {
+                mode = m
+                prefs.tailscaleMode = m
+            },
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            RadioButton(selected = m == mode, onClick = null)
+            Column(Modifier.padding(start = 8.dp, top = 8.dp, bottom = 8.dp)) {
+                Text(m.label)
+                Text(m.detail, style = MaterialTheme.typography.bodySmall, color = hint)
+            }
+        }
+    }
+    Spacer(Modifier.height(4.dp))
+    Text("VPN: " + if (vpnUp) "connected" else "not connected", style = MaterialTheme.typography.bodyMedium)
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedButton(enabled = !busy, onClick = {
+            busy = true
+            status = null
+            scope.launch {
+                status = Tailscale.ensure(context, prefs, force = true).message
+                vpnUp = Tailscale.isVpnActive(context)
+                busy = false
+            }
+        }) { Text("Connect now") }
+        TextButton(onClick = { Tailscale.openApp(context) }) { Text("Open Tailscale") }
+        if (busy) CircularProgressIndicator(Modifier.size(24.dp))
+    }
+    status?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
+    Spacer(Modifier.height(4.dp))
+    Text(
+        "Most reliable: make Tailscale your always-on VPN (Android Settings → Network & internet → VPN → " +
+            "Tailscale). Then Tentacle doesn't need to connect it at all.",
+        style = MaterialTheme.typography.bodySmall, color = hint,
+    )
 }
 
 @Composable

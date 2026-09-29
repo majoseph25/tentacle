@@ -31,6 +31,10 @@ class Prefs(context: Context) {
         get() = StreamQuality.parse(sp.getString("streamQuality", null))
         set(v) = sp.edit { putString("streamQuality", v.name) }
 
+    var tailscaleMode: TailscaleMode
+        get() = TailscaleMode.parse(sp.getString("tailscaleMode", null))
+        set(v) = sp.edit { putString("tailscaleMode", v.name) }
+
     /** Stable id for this install. Locked so the service and the UI can't each create a different one. */
     val deviceId: String
         get() = synchronized(DEVICE_ID_LOCK) {

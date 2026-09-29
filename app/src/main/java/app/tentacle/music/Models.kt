@@ -29,6 +29,21 @@ enum class StreamQuality(val kbps: Int, val label: String) {
     }
 }
 
+/** When Tentacle asks the Tailscale app to connect (see [Tailscale]). */
+enum class TailscaleMode(val label: String, val detail: String) {
+    OFF("Off", "Tentacle never touches Tailscale."),
+    WHEN_NEEDED(
+        "When the server can't be reached",
+        "Checks your server first, and connects Tailscale only if it doesn't answer, for example away from home.",
+    ),
+    ALWAYS("Always", "Connects Tailscale whenever Tentacle opens or your car connects."),
+    ;
+
+    companion object {
+        fun parse(name: String?): TailscaleMode = entries.firstOrNull { it.name == name } ?: OFF
+    }
+}
+
 data class BrowseEntry(
     val mediaId: String,
     val title: String,

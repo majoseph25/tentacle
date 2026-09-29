@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.tentacle.music.Account
 import app.tentacle.music.R
+import app.tentacle.music.Tailscale
 
 /**
  * The phone app: Now playing, Library (the car's browse tree plus a Songs tab) and Settings.
@@ -72,6 +73,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
+        // First, so the library waits for Tailscale (if the settings use it) instead of failing without it.
+        if (account.prefs.isSignedIn) Tailscale.ensureAsync(this, account.prefs)
         player.connect()
     }
 

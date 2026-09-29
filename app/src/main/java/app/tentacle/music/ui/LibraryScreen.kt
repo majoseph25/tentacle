@@ -37,6 +37,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -55,12 +56,14 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.ui.text.input.ImeAction
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.tentacle.music.BrowseEntry
 import app.tentacle.music.ContentStyle
 import app.tentacle.music.Library
 import kotlinx.coroutines.delay
 import app.tentacle.music.MediaItems
 import app.tentacle.music.R
+import app.tentacle.music.Tailscale
 
 /** One screen in the library back stack, remembering how its children should be drawn. */
 private data class Node(val id: String, val title: String, val grid: Boolean)
@@ -149,16 +152,18 @@ private fun NodeContent(
     onPlay: (String) -> Unit,
     bottomPadding: PaddingValues,
 ) {
+    // Counts Tailscale connections: when Tailscale comes up, reload what may have failed without it.
+    val tailscaleConnections by Tailscale.connections.collectAsStateWithLifecycle()
     if (node.id == SONGS_ID) {
-        SongsList(connected, player, onPlay, bottomPadding)
+        key(tailscaleConnections) { SongsList(connected, player, onPlay, bottomPadding) }
         return
     }
-    var items by remember(node.id) { mutableStateOf<List<MediaItem>?>(null) }
-    var error by remember(node.id) { mutableStateOf<String?>(null) }
+    var items by remember(node.id, tailscaleConnections) { mutableStateOf<List<MediaItem>?>(null) }
+    var error by remember(node.id, tailscaleConnections) { mutableStateOf<String?>(null) }
     var attempt by remember(node.id) { mutableIntStateOf(0) }
 
     // Reloads after a reconnect too, so a page that failed while the app was in the background recovers.
-    LaunchedEffect(node.id, attempt, connected) {
+    LaunchedEffect(node.id, attempt, connected, tailscaleConnections) {
         if (!connected) return@LaunchedEffect
         if (items != null && error == null) return@LaunchedEffect
         error = null

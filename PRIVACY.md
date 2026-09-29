@@ -18,9 +18,14 @@ phone and in Android Auto. It is not affiliated with the Jellyfin project.
 | Your library and music (titles, artists, album art, audio) | To browse and play it | Streamed from your server to your phone and car | Album art is cached on your phone and cleared on sign-out or with "Clear cache". Audio isn't saved. |
 | What you play (song, position, paused or playing) | So your server's Recently played, play counts and dashboard stay accurate | Only your own Jellyfin server | Your current queue and position, on your phone, so playback can resume. Cleared on sign-out. |
 | Apps that asked to browse your library (package names and times) | So you can see why Android Auto connected or not | Nowhere; shown in Settings only | On your phone, last 8 entries |
+| Whether a VPN is connected (optional Tailscale feature) | To decide whether to ask the Tailscale app to connect | Nowhere | Not stored |
 
 The app talks **only to the Jellyfin server you enter**. It has no analytics, advertising,
 crash-reporting or tracking of any kind, and sends nothing to the developer or any third party.
+
+If you turn on the optional Tailscale feature, the app also sends the Tailscale app on your phone a
+request to connect. The request contains no data, and the app never reads your Tailscale account,
+settings or traffic.
 
 ## Sharing
 
