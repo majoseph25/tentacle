@@ -1,0 +1,7 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/jellyfin/jellyfin/security
+    about: >-
+      Vulnerabilities in Tentacle: see SECURITY.md in this repository (report privately, not as an issue).
+      Vulnerabilities in the Jellyfin server itself go to the Jellyfin project via this link.

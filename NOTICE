@@ -1,0 +1,29 @@
+Tentacle
+Copyright 2026 Mark Joseph
+
+This product was originally created by Mark Joseph.
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use this
+software except in compliance with the License. You may obtain a copy of the License in the
+LICENSE file or at http://www.apache.org/licenses/LICENSE-2.0
+
+Under Section 4(d) of the License, this NOTICE file must be included with any distribution
+of this software or of works derived from it, including forks and modified versions.
+
+----------------------------------------------------------------------------------------------
+Name and logo
+
+"Tentacle" and the Tentacle logo (the files in branding/ and the app icons derived from
+them) are not licensed under the Apache License. Section 6 of the License grants no rights
+to use them. All rights are reserved by Mark Joseph. Forks and derivative works must use a
+different name and icon, and must not suggest that they are, or are endorsed by, the
+original Tentacle.
+
+----------------------------------------------------------------------------------------------
+Third-party software
+
+Tentacle includes open-source libraries under their own licences (Apache-2.0 and MIT). The
+full list, with versions and licences, is in docs/DEPENDENCIES.md.
+
+Tentacle is an unofficial client for Jellyfin servers. It is not affiliated with or endorsed
+by the Jellyfin project. "Jellyfin" is used only to describe compatibility.

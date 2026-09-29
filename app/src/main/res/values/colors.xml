@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Launcher icon background (the logo is designed on white). -->
+    <color name="ic_launcher_background">#FFFFFF</color>
+    <!-- Launch-screen backgrounds, matching the green theme's surfaces (see ui/Theme.kt). -->
+    <color name="launch_background">#F6FBF2</color>
+</resources>

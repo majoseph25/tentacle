@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- MissingIntentFilterForMediaSearch is ignored on purpose: an exported MEDIA_PLAY_FROM_SEARCH
+     activity would let any app start playback without passing ClientAccess. Voice requests in
+     Android Auto and from Assistant reach the media session directly (PlaybackService). -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:ignore="MissingIntentFilterForMediaSearch">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Keep playing with the screen off and in the car: a media-playback foreground service. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <!-- Keeps the Wi-Fi/CPU awake while streaming (ExoPlayer wake mode). -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <!-- Lets ClientAccess look up these callers (package visibility, Android 11+). -->
+    <queries>
+        <package android:name="com.google.android.projection.gearhead" />
+        <package android:name="com.google.android.googlequicksearchbox" />
+        <package android:name="com.google.android.carassistant" />
+        <package android:name="com.google.android.gms" />
+    </queries>
+
+    <!-- allowBackup covers cloud backup; dataExtractionRules also blocks device-to-device
+         transfer (Android 12+), so the access token never leaves this phone. -->
+    <application
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="false"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:label="@string/app_name"
+        android:networkSecurityConfig="@xml/network_security_config"
+        android:theme="@style/AppTheme">
+
+        <!-- Tells Android Auto this app is a media app. -->
+        <meta-data
+            android:name="com.google.android.gms.car.application"
+            android:resource="@xml/automotive_app_desc" />
+
+        <activity
+            android:name=".ui.MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- The player. Android Auto, Assistant, Bluetooth and the system connect here. It can't
+             require a permission (Android Auto holds none we could require), so PlaybackService
+             limits browsing and choosing what to play to callers that pass ClientAccess. -->
+        <service
+            android:name=".PlaybackService"
+            android:exported="true"
+            android:foregroundServiceType="mediaPlayback"
+            tools:ignore="ExportedService">
+            <intent-filter>
+                <action android:name="androidx.media3.session.MediaLibraryService" />
+                <action android:name="android.media.browse.MediaBrowserService" />
+            </intent-filter>
+        </service>
+
+        <!-- Serves album art to Android Auto through content:// URIs. Exported because Android Auto
+             must reach it; ArtworkProvider checks every caller against ClientAccess. -->
+        <provider
+            android:name=".ArtworkProvider"
+            android:authorities="${applicationId}.artwork"
+            android:exported="true"
+            tools:ignore="ExportedContentProvider" />
+    </application>
+</manifest>

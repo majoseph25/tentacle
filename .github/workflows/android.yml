@@ -1,0 +1,46 @@
+# Builds Tentacle and runs every check on each push to main and each pull request:
+# unit tests (debug + release), Android lint (errors fail the build) and an R8-shrunk release build.
+name: Android CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Least privilege: the workflow only needs to read the code.
+permissions:
+  contents: read
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      # Fails if gradle/wrapper/gradle-wrapper.jar isn't an official Gradle release (supply-chain check).
+      - uses: gradle/actions/wrapper-validation@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Unit tests, lint and release build
+        run: ./gradlew --no-daemon testDebugUnitTest testReleaseUnitTest lintDebug lintRelease assembleRelease
+
+      - name: Upload test and lint reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports
+          path: |
+            app/build/reports/
+            app/build/test-results/
+          retention-days: 14

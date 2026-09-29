@@ -1,0 +1,26 @@
+# Build output and IDE state
+.gradle/
+build/
+.idea/
+*.iml
+.DS_Store
+captures/
+.kotlin/
+
+# Machine-specific SDK path
+local.properties
+
+# Signing material: never commit keys or their passwords
+*.jks
+*.keystore
+*.p12
+*.pem
+keystore.properties
+signing.properties
+
+# Play Console service account credentials
+*service-account*.json
+play-publisher*.json
+
+# Local source snapshots
+backups/

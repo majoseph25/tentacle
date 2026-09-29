@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Jellyfin servers are self-hosted, so the server address is only known at runtime:
+  - Plain HTTP stays allowed because most home servers run http:// on the LAN. The setup screen
+    warns before signing in to a public http:// address (see Account.signIn).
+  - HTTPS trusts only the system CA store. Certificates the user installed are not trusted, so a
+    CA pushed by malware or a profile can't intercept traffic. (This is the Android 7+ default,
+    stated explicitly so a future change can't loosen it by accident.)
+-->
+<network-security-config xmlns:tools="http://schemas.android.com/tools">
+    <base-config cleartextTrafficPermitted="true" tools:ignore="InsecureBaseConfiguration">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

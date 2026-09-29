@@ -1,0 +1,25 @@
+# Weekly pull requests for dependency updates. Each one runs Android CI before it can be merged.
+version: 2
+updates:
+  - package-ecosystem: gradle
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      androidx:
+        patterns: ["androidx.*"]
+      kotlin:
+        patterns: ["org.jetbrains.kotlin*", "org.jetbrains.kotlinx*"]
+    ignore:
+      # Later Compose BOMs need compileSdk 37 and AGP 9.1 (see docs/DEPENDENCIES.md). Move together with AGP 9.
+      - dependency-name: "androidx.compose:compose-bom"
+        versions: [">=2026.08.00"]
+      # AGP 9 is a major migration (new DSL); do it deliberately, not via a bot PR.
+      - dependency-name: "com.android.application"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
