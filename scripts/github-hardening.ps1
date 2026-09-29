@@ -34,6 +34,7 @@ Invoke-Setting 'Private vulnerability reporting' @('-X', 'PUT', "repos/$Repo/pri
 '{"security_and_analysis":{"secret_scanning":{"status":"enabled"},"secret_scanning_push_protection":{"status":"enabled"}}}' |
     Set-Content $tmp -Encoding ascii
 Invoke-Setting 'Secret scanning + push protection' @('-X', 'PATCH', "repos/$Repo", '--input', $tmp)
+Invoke-Setting 'Code scanning (CodeQL)' @('-X', 'PATCH', "repos/$Repo/code-scanning/default-setup", '-f', 'state=configured')
 
 # 2. Branch protection for main (a ruleset): no deleting or force-pushing main; changes arrive by pull
 #    request and must pass the Android CI "build" check. Repository admins (the owner) can bypass, so

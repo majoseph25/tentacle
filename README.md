@@ -38,7 +38,7 @@ needs to be running.
 |---|---|
 | **Android** | Version 0.5.0. Builds and passes CI. Tested on a phone. Android Auto still needs testing in a car ([open items](docs/SECURITY_ASSESSMENT.md#8-open-items)). |
 | **iOS** | Planned: a native Swift app with CarPlay |
-| **Releases** | None yet. Build from source (below). |
+| **Releases** | Source tagged [`v0.5.0`](https://github.com/majoseph25/tentacle/releases/tag/v0.5.0). No downloadable app yet: build from source (below). |
 
 ## Getting started
 

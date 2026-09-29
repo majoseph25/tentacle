@@ -4,11 +4,17 @@ All notable changes to Tentacle. Versions follow `versionName` / `versionCode` i
 
 ## Repository (2026-09-29)
 
-- **Published to a private GitHub repository** with Android CI, Dependabot, issue and pull-request
-  templates and a contributing guide.
-- **CI actions pinned to commit SHAs.** Dependabot alerts and security updates are on.
-- **`scripts/github-hardening.ps1`** turns on the remaining protections once the repository is public:
-  private vulnerability reporting, secret scanning, push protection, and a ruleset protecting `main`.
+- **Published on GitHub,** public since 2026-09-29 and tagged `v0.5.0`. Includes Android CI, Dependabot,
+  issue and pull-request templates and a contributing guide.
+- **Repository hardening,** applied by `scripts/github-hardening.ps1`:
+  - CI actions pinned to commit SHAs,
+  - Dependabot alerts and security updates,
+  - private vulnerability reporting,
+  - secret scanning and push protection,
+  - CodeQL code scanning,
+  - a ruleset protecting `main` (pull requests plus passing CI).
+- **History checked before going public:** the full git history was scanned for secrets and personal
+  data before the repository went public.
 - **Documentation reorganized.**
   - The security assessment moved to `docs/` and is now organized by topic: threat model, controls,
     findings and open items.
