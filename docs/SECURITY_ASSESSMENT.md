@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **App** | Tentacle 0.6.1 (build 8), Android |
+| **App** | Tentacle 0.6.2 (build 9), Android |
 | **Reviews** | Four full reviews (2026-09-27 to 2026-09-28), plus assessments of every later change |
 | **Last updated** | 2026-09-29 |
 | **Performed by** | Claude (Anthropic's AI model), working in [Claude Code](https://claude.com/claude-code) for the project owner, Mark Joseph |
@@ -253,8 +253,10 @@ into the cache file name (`java/path-injection`) and the server request (`java/s
 
 The underlying check was already in place, so these are hardening fixes rather than vulnerabilities
 closed. Unit tests cover the new check (`canonicalItemIdAcceptsJellyfinGuids`,
-`canonicalItemIdRejectsEverythingElse`). The alerts close automatically once CodeQL re-scans `main`
-after the merge.
+`canonicalItemIdRejectsEverythingElse`). **Follow-up (0.6.2):** the 0.6.1 version called the check as `uri.lastPathSegment?.let(::canonicalItemId)`.
+CodeQL models Kotlin's `let` as passing its input straight through, so its re-scan of `main` still
+reported all five alerts. 0.6.2 calls `canonicalItemId` directly. The alerts should close once CodeQL
+scans `main` with that change.
 
 ### 6.0 Tailscale feature (0.6.0 and 0.6.1)
 
@@ -368,7 +370,7 @@ Latest results (0.6.1):
 |---|---|
 | Unit tests | **33 / 33** pass in debug and release: ID validation, LAN detection, stream URLs without credentials, token only to the signed-in server, paging limits and overflow, artwork decode bounds, sign-in checks, Tailscale address detection and connect decisions, GUID rebuilding for artwork IDs |
 | Android lint | 0 errors in debug and release. Remaining warnings are only newer library versions and translatable-string notes. |
-| Dependencies | **0 known vulnerabilities** in 130 shipped libraries (OSV, 2026-09-28). Details in [DEPENDENCIES.md](DEPENDENCIES.md). |
+| Dependencies | **0 known vulnerabilities** in 130 shipped libraries (OSV, 2026-09-30, after the Kotlin and coroutines update). Details in [DEPENDENCIES.md](DEPENDENCIES.md). |
 | Release APK | Not debuggable. No backup. Explicit network security config. targetSdk 36. Diagnostic code absent. Exported components as in [section 4](#4-attack-surface). |
 | Repository | No secrets or personal data: scanned before the first push, and the full git history again before going public |
 | CI on GitHub | Passing |
@@ -405,7 +407,7 @@ These need a phone, a car or the Desktop Head Unit. Unit tests can't cover them:
 | R-3 | Apps with notification access count as trusted | They can already control every media session on the phone (Android's design). This matches Google's reference app. |
 | R-4 | Google apps are recognized via the preinstalled Play services certificate | Phones without Play services fall back to the preinstalled/Play-installed rule; Android Auto needs Play services anyway. |
 | R-5 | No phone-side "Play X on Tentacle" voice command | An exported search activity would let any app start playback without the caller check. Voice works in Android Auto. |
-| R-6 | Some libraries are held back: OkHttp 4.12.0, Compose BOM 2026.06.01, androidx.core < 1.19 | None has a known vulnerability. Newer versions need AGP 9 / compileSdk 37 or are major upgrades, each best done as its own change. Dependabot's open proposals (Kotlin, OkHttp 5, Gradle 9) are left for the owner to decide. |
+| R-6 | Some libraries are held back: OkHttp 4.12.0, Compose BOM 2026.06.01, androidx.core < 1.19, Kotlin 2.3.x (not 2.4) | None has a known vulnerability. Newer versions need AGP 9 / compileSdk 37, or are major upgrades best done as their own change. Kotlin 2.4 needs R8 9.1.29+, which only AGP 9 bundles; with AGP 8.13 the release build couldn't read its metadata, so 0.6.2 uses Kotlin 2.3.21, and Dependabot skips 2.4 until AGP 9. The owner closed Dependabot's OkHttp 5 and Gradle 9 proposals for now. |
 | R-7 | Only JVM unit tests; no automated UI or device tests | Device behaviour is covered by the checklist in [8.1](#81-not-yet-verified-on-a-device). Instrumented tests would help in the long run. |
 | R-8 | The phone UI and the playback service share one process | Normal for Android media apps; the known crash vectors are fixed. |
 | R-9 | The Tailscale app isn't verified by its signing certificate before Tentacle sends it the connect request | The request carries no data and grants nothing. An impostor under Tailscale's package name would have to be sideloaded by the user, and would learn only that Tentacle wanted to connect. |
