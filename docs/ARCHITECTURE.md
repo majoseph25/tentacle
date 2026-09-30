@@ -97,8 +97,9 @@ app/src/test/java/app/tentacle/music/  JVM unit tests (security rules, streaming
    built-in `android.resource://` icon.
 5. The result is trimmed to the requested page. Media3 treats an oversized page as a fatal error.
 
-The phone app's Songs tab is paged on the server (`StartIndex`/`Limit`, 100 per page). Android Auto
-doesn't page: it gets whole lists capped at 200, or A–Z pickers for large libraries.
+The phone app's long lists (every song, artist and album) are paged on the server (`StartIndex`/`Limit`,
+100 per page) and load as you scroll. Android Auto doesn't page: it gets whole lists capped at 200, or
+A–Z pickers for large libraries.
 
 ### Media ID scheme
 
@@ -106,7 +107,7 @@ doesn't page: it gets whole lists capped at 200, or A–Z pickers for large libr
 |---|---|
 | `root` | The tabs: `home`, `albums`, `artists`, `playlists`, plus `songs` for the phone app. |
 | `songs` | All songs A–Z. Paged for the phone; a list or A–Z picker in the car. |
-| `sort:albums:<name\|artist\|year\|added>` | Albums in one sort order, with section headers. |
+| `artists`, `sort:albums:<name\|artist\|year\|added>` | All artists A–Z; all albums in one sort order. Paged for the phone (`Library.PAGED_LISTS`); in the car, the first 200, or an A–Z picker for artists and albums A–Z. |
 | `az:<albums\|artists\|songs>:<letter>` | One letter of an A–Z picker (`#` means non-letters). |
 | `album:ID`, `artist:ID`, `playlist:ID` | Containers. |
 | `track:ID\|<ctx>` | A track, plus the queue it belongs to (`album:ID`, `playlist:ID`, `artist:ID`, `songs:<index>`, `songsaz:<letter>`, `recent:all`). |
@@ -167,7 +168,7 @@ For servers reachable only through Tailscale away from home. `Tailscale.ensureAs
 Each run:
 1. **Decides whether to act** (`precheck`, unit-tested). It stops if the setting is Off, Tailscale isn't
    installed, a VPN is already up, or an automatic attempt failed within the last 60 s.
-2. **Checks the server** ("When the server can't be reached" mode only). It tries a 1.5 s TCP connection
+2. **Checks the server.** It tries a 1.5 s TCP connection
    to the server's host and port. If that works, it stops.
 3. **Asks Tailscale to connect.** It sends an explicit `com.tailscale.ipn.CONNECT_VPN` broadcast to
    Tailscale's `IPNReceiver`, then waits for a VPN network (`ConnectivityManager` callback). If there's
@@ -181,6 +182,12 @@ When Tailscale connects:
 - the service calls `notifyChildrenChanged` on the root and tabs, so the car reloads,
 - a song that failed is prepared again,
 - the phone's Library reloads, via `Tailscale.connections`.
+
+**Turning it off:** `Tailscale.disconnect` sends `com.tailscale.ipn.DISCONNECT_VPN`. It runs when the
+player service is destroyed, or when the setting is switched off, but only if the stored flag
+`tailscaleStartedByTentacle` says Tentacle turned Tailscale on. The flag is cleared whenever Tailscale is
+found off. `disconnect` also cancels an attempt under way. Waiters use `join()`, so a library request
+isn't failed by that.
 
 ## Security model
 

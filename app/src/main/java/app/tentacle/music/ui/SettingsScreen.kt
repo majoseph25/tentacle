@@ -16,8 +16,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -25,6 +27,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -49,6 +52,7 @@ import app.tentacle.music.Prefs
 import app.tentacle.music.StreamQuality
 import app.tentacle.music.Tailscale
 import app.tentacle.music.TailscaleMode
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 
@@ -161,9 +165,25 @@ private fun TailscaleSettings(prefs: Prefs) {
     }
     val hint = MaterialTheme.colorScheme.onSurfaceVariant
 
+    /** After asking Tailscale to disconnect, waits (up to 5 s) for the VPN to go, then shows the result. */
+    suspend fun showDisconnected(sent: Boolean) {
+        if (sent) {
+            for (i in 0 until 10) {
+                if (!Tailscale.isVpnActive(context)) break
+                delay(500)
+            }
+        }
+        vpnUp = Tailscale.isVpnActive(context)
+        status = when {
+            !sent -> null
+            vpnUp -> "Asked Tailscale to disconnect, but a VPN is still on. Check the Tailscale app."
+            else -> "Tailscale turned off."
+        }
+    }
+
     Text(
         "Reach your server away from home through Tailscale. Tentacle asks the Tailscale app to connect; " +
-            "it never sees your Tailscale account and never turns Tailscale off.",
+            "it never sees your Tailscale account or traffic.",
         style = MaterialTheme.typography.bodySmall, color = hint,
     )
     Spacer(Modifier.height(4.dp))
@@ -185,43 +205,63 @@ private fun TailscaleSettings(prefs: Prefs) {
             style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary,
         )
     }
-    TailscaleMode.entries.forEach { m ->
-        Row(
-            Modifier.fillMaxWidth().selectable(selected = m == mode, role = Role.RadioButton) {
-                mode = m
-                prefs.tailscaleMode = m
-            },
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            RadioButton(selected = m == mode, onClick = null)
-            Column(Modifier.padding(start = 8.dp, top = 8.dp, bottom = 8.dp)) {
-                Text(m.label)
-                Text(m.detail, style = MaterialTheme.typography.bodySmall, color = hint)
+    val on = mode == TailscaleMode.WHEN_NEEDED
+    Row(
+        Modifier.fillMaxWidth().toggleable(value = on, role = Role.Switch, enabled = !busy) { checked ->
+            mode = if (checked) TailscaleMode.WHEN_NEEDED else TailscaleMode.OFF
+            prefs.tailscaleMode = mode
+            if (!checked) {
+                busy = true
+                scope.launch {
+                    // Switching off also turns Tailscale off, if Tentacle was the one that turned it on.
+                    showDisconnected(Tailscale.disconnect(context, prefs, onlyIfStartedByTentacle = true))
+                    busy = false
+                }
+            } else {
+                status = null
             }
+        }.padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text("Connect when your server can't be reached")
+            Text(
+                "Tentacle checks your server first and only connects Tailscale if it doesn't answer, for example " +
+                    "away from home. It turns Tailscale off again when you close Tentacle or switch this off. " +
+                    "If you turned Tailscale on yourself, Tentacle leaves it alone.",
+                style = MaterialTheme.typography.bodySmall, color = hint,
+            )
         }
+        Spacer(Modifier.width(12.dp))
+        Switch(checked = on, onCheckedChange = null, enabled = !busy)
     }
     Spacer(Modifier.height(4.dp))
     Text("VPN: " + if (vpnUp) "connected" else "not connected", style = MaterialTheme.typography.bodyMedium)
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedButton(enabled = !busy, onClick = {
-            busy = true
-            status = null
-            scope.launch {
-                status = Tailscale.ensure(context, prefs, force = true).message
-                vpnUp = Tailscale.isVpnActive(context)
-                busy = false
-            }
-        }) { Text("Connect now") }
+        if (vpnUp) {
+            OutlinedButton(enabled = !busy, onClick = {
+                busy = true
+                status = null
+                scope.launch {
+                    showDisconnected(Tailscale.disconnect(context, prefs, onlyIfStartedByTentacle = false))
+                    busy = false
+                }
+            }) { Text("Disconnect") }
+        } else {
+            OutlinedButton(enabled = !busy, onClick = {
+                busy = true
+                status = null
+                scope.launch {
+                    status = Tailscale.ensure(context, prefs, force = true).message
+                    vpnUp = Tailscale.isVpnActive(context)
+                    busy = false
+                }
+            }) { Text("Connect now") }
+        }
         TextButton(onClick = { Tailscale.openApp(context) }) { Text("Open Tailscale") }
         if (busy) CircularProgressIndicator(Modifier.size(24.dp))
     }
     status?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
-    Spacer(Modifier.height(4.dp))
-    Text(
-        "Most reliable: make Tailscale your always-on VPN (Android Settings → Network & internet → VPN → " +
-            "Tailscale). Then Tentacle doesn't need to connect it at all.",
-        style = MaterialTheme.typography.bodySmall, color = hint,
-    )
 }
 
 @Composable

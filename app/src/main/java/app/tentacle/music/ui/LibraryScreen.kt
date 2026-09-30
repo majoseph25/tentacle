@@ -6,6 +6,8 @@ package app.tentacle.music.ui
 import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,9 +25,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -69,7 +73,10 @@ import app.tentacle.music.Tailscale
 private data class Node(val id: String, val title: String, val grid: Boolean)
 
 private const val SONGS_ID = "songs"
-private const val SONGS_PAGE = 100
+private const val ALBUMS_ID = "albums"
+
+/** Items per page for the long A–Z lists (the service caps pages at Library.MAX_PAGE_SIZE). */
+private const val LIST_PAGE = 100
 private const val MIN_QUERY = 2
 private const val SEARCH_DEBOUNCE_MS = 350L
 
@@ -154,8 +161,12 @@ private fun NodeContent(
 ) {
     // Counts Tailscale connections: when Tailscale comes up, reload what may have failed without it.
     val tailscaleConnections by Tailscale.connections.collectAsStateWithLifecycle()
-    if (node.id == SONGS_ID) {
-        key(tailscaleConnections) { SongsList(connected, player, onPlay, bottomPadding) }
+    if (node.id == ALBUMS_ID) {
+        key(tailscaleConnections) { AlbumsTab(connected, player, onOpen, onPlay, bottomPadding) }
+        return
+    }
+    if (node.id in Library.PAGED_LISTS) {
+        key(tailscaleConnections) { PagedList(node, connected, player, onOpen, onPlay, bottomPadding) }
         return
     }
     var items by remember(node.id, tailscaleConnections) { mutableStateOf<List<MediaItem>?>(null) }
@@ -275,56 +286,121 @@ private fun SearchResults(
     }
 }
 
-/** Every song A–Z, loaded a page at a time as you scroll. */
+/** The Albums tab: every album, A–Z by default, with the other sort orders as chips along the top. */
 @Composable
-private fun SongsList(connected: Boolean, player: PlayerConnection, onPlay: (String) -> Unit, bottomPadding: PaddingValues) {
-    val songs = remember { mutableStateListOf<MediaItem>() }
+private fun AlbumsTab(
+    connected: Boolean,
+    player: PlayerConnection,
+    onOpen: (Node) -> Unit,
+    onPlay: (String) -> Unit,
+    bottomPadding: PaddingValues,
+) {
+    var order by rememberSaveable { mutableStateOf(Library.ALBUM_SORTS.first().first) }
+    Column(Modifier.fillMaxSize()) {
+        Row(
+            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Library.ALBUM_SORTS.forEach { (key, title) ->
+                FilterChip(selected = key == order, onClick = { order = key }, label = { Text(title) })
+            }
+        }
+        val title = Library.ALBUM_SORTS.first { it.first == order }.second
+        key(order) { PagedList(Node("sort:albums:$order", title, grid = true), connected, player, onOpen, onPlay, bottomPadding) }
+    }
+}
+
+/**
+ * A long list (every song, artist or album), loaded a page at a time as you scroll, under the
+ * section headers the library sends (A–Z letters, years, artists).
+ */
+@Composable
+private fun PagedList(
+    node: Node,
+    connected: Boolean,
+    player: PlayerConnection,
+    onOpen: (Node) -> Unit,
+    onPlay: (String) -> Unit,
+    bottomPadding: PaddingValues,
+) {
+    val items = remember { mutableStateListOf<MediaItem>() }
     var nextPage by remember { mutableIntStateOf(0) }
     var done by remember { mutableStateOf(false) }
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val listState = rememberLazyListState()
+    val gridState = rememberLazyGridState()
     val nearEnd by remember {
-        derivedStateOf { (listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0) >= listState.layoutInfo.totalItemsCount - 20 }
+        derivedStateOf {
+            if (node.grid) {
+                (gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0) >= gridState.layoutInfo.totalItemsCount - 20
+            } else {
+                (listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0) >= listState.layoutInfo.totalItemsCount - 20
+            }
+        }
     }
 
     LaunchedEffect(connected, nearEnd, nextPage, error) {
         if (!connected || done || loading || error != null || !nearEnd) return@LaunchedEffect
         loading = true
         try {
-            val page = player.children(SONGS_ID, nextPage, SONGS_PAGE)
-            songs += page
-            if (page.size < SONGS_PAGE) done = true
+            val page = player.children(node.id, nextPage, LIST_PAGE)
+            items += page
+            if (page.size < LIST_PAGE) done = true
             nextPage++
         } catch (e: Exception) {
-            error = "Couldn't load more songs."
+            error = "Couldn't load more. Check your connection."
         } finally {
             loading = false
         }
     }
 
-    LazyColumn(state = listState, contentPadding = PaddingValues(bottom = bottomPadding.calculateBottomPadding() + 8.dp)) {
-        item(key = "shuffle") {
-            MediaRow(
-                "Shuffle all songs", "Random songs from your whole library", null, R.drawable.ic_shuffle,
-                Modifier.clickable { onPlay("shuffle:library:all") },
-            )
-        }
-        songs.forEachIndexed { i, item ->
-            groupHeader(songs, i)?.let { header -> item(key = "h$i") { SectionHeader(header) } }
-            item(key = "i$i") { ItemRow(item) { click(item, {}, onPlay) } }
-        }
+    val onClick: (MediaItem) -> Unit = { item -> click(item, onOpen, onPlay) }
+    val bottom = bottomPadding.calculateBottomPadding() + 8.dp
+    val footer: @Composable () -> Unit = {
         when {
-            error != null -> item(key = "error") {
-                Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(error.orEmpty(), Modifier.weight(1f))
-                    TextButton(onClick = { error = null }) { Text("Try again") }
+            error != null -> Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(error.orEmpty(), Modifier.weight(1f))
+                TextButton(onClick = { error = null }) { Text("Try again") }
+            }
+            !done -> Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+            items.isEmpty() -> Message("Nothing here yet.", loading = false)
+        }
+    }
+
+    if (node.grid) {
+        LazyVerticalGrid(
+            state = gridState,
+            columns = GridCells.Adaptive(148.dp),
+            contentPadding = PaddingValues(12.dp, 8.dp, 12.dp, bottom),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            items.forEachIndexed { i, item ->
+                groupHeader(items, i)?.let { header ->
+                    item(span = { GridItemSpan(maxLineSpan) }, key = "h$i") { SectionHeader(header) }
+                }
+                item(key = "i$i") { MediaCard(item) { onClick(item) } }
+            }
+            // No key: a keyed footer would be kept in view as pages load above it, scrolling the list down.
+            item(span = { GridItemSpan(maxLineSpan) }) { footer() }
+        }
+    } else {
+        LazyColumn(state = listState, contentPadding = PaddingValues(bottom = bottom)) {
+            if (node.id == SONGS_ID) {
+                item(key = "shuffle") {
+                    MediaRow(
+                        "Shuffle all songs", "Random songs from your whole library", null, R.drawable.ic_shuffle,
+                        Modifier.clickable { onPlay("shuffle:library:all") },
+                    )
                 }
             }
-            !done -> item(key = "loading") {
-                Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+            items.forEachIndexed { i, item ->
+                groupHeader(items, i)?.let { header -> item(key = "h$i") { SectionHeader(header) } }
+                item(key = "i$i") { ItemRow(item) { onClick(item) } }
             }
-            songs.isEmpty() -> item(key = "empty") { Message("No songs found.", loading = false) }
+            // No key: a keyed footer would be kept in view as pages load above it, scrolling the list down.
+            item { footer() }
         }
     }
 }

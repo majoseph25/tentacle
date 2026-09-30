@@ -2,6 +2,26 @@
 
 All notable changes to Tentacle. Versions follow `versionName` / `versionCode` in `app/build.gradle.kts`.
 
+## 0.6.1 (build 8) — 2026-09-29
+
+### Changed
+- **Tailscale connects only when it's needed, and turns off again.** In 0.6.0, **Always** connected
+  Tailscale every time the app opened, even at home, and nothing turned it off.
+  - **The setting** is now a single switch: **Connect when your server can't be reached**. A saved
+    "Always" becomes this.
+  - **Turning it off:** Tentacle turns Tailscale off when you're done (you close Tentacle, or the music
+    stops and the car disconnects), and when you switch the setting off, but only if Tentacle turned it
+    on. A Tailscale connection you started yourself is left alone.
+  - **Disconnect button:** Settings shows **Disconnect** while a VPN is on.
+- **Albums and Artists list every album and artist A–Z** on the phone, loading more as you scroll,
+  instead of an A–Z letter picker. The Albums tab opens straight onto the album grid, with **A–Z**,
+  **By artist**, **Newest releases** and **Recently added** as buttons along the top. The car keeps the
+  letter picker for large libraries, since Android Auto can't load long lists a page at a time.
+
+### Fixed
+- **Stopping Tailscale mid-attempt.** Stopping a Tailscale attempt while one was under way (for example
+  switching the setting off) could have failed a library request that was waiting for it.
+
 ## 0.6.0 (build 7) — 2026-09-29
 
 ### Added

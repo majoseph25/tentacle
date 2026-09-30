@@ -2,11 +2,11 @@
 
 | | |
 |---|---|
-| **App** | Tentacle 0.6.0 (build 7), Android |
+| **App** | Tentacle 0.6.1 (build 8), Android |
 | **Reviews** | Four full reviews (2026-09-27 to 2026-09-28), plus assessments of every later change |
 | **Last updated** | 2026-09-29 |
 | **Performed by** | Claude (Anthropic's AI model), working in [Claude Code](https://claude.com/claude-code) for the project owner, Mark Joseph |
-| **Current status** | 0 open findings · 30 / 30 tests pass · 0 known vulnerabilities in 130 shipped libraries |
+| **Current status** | 0 open findings · 31 / 31 tests pass · 0 known vulnerabilities in 130 shipped libraries |
 
 > **Please read this first.** These reviews were carried out by an AI assistant: code review, static
 > analysis, dependency scanning, build inspection and testing on one phone. They are **not** a professional
@@ -51,7 +51,7 @@ plays. The main protections:
 | 3 | 2026-09-28 | 0.2.0 | Compose phone app | 5 | 3 | 0 |
 | 4 | 2026-09-28 | 0.4.0 | Standalone player rewrite (Media3), Songs, search | 4 | 3 | 0 |
 | — | 2026-09-29 | 0.5.0–0.5.1 | Changes after review 4, GitHub setup, Android Auto testing | 0 | 2 | 0 |
-| — | 2026-09-29 | 0.6.0 | Optional Tailscale connect | 0 (1 accepted risk) | 1 | 0 |
+| — | 2026-09-29 | 0.6.0–0.6.1 | Optional Tailscale connect, then connect only when needed and turn off again | 0 (1 accepted risk) | 3 | 0 |
 
 Version 0.3.0 replaced the original remote-control design, so several early findings are now **obsolete**:
 the code they concerned no longer exists. They're marked as such in [section 6](#6-findings).
@@ -212,12 +212,18 @@ Added in 0.6.0 for servers that are reachable only through Tailscale away from h
 - **What Tentacle does:** asks the installed Tailscale app to connect, using the public
   `com.tailscale.ipn.CONNECT_VPN` broadcast that Tailscale provides for automation apps. It's sent to
   Tailscale's `IPNReceiver` by explicit component, so no other app can receive it, and it carries no data.
-- **What Tentacle doesn't do:** it never reads Tailscale's state, account, keys or traffic, never
-  disconnects Tailscale, and never embeds a VPN of its own.
+- **Turning it off again (0.6.1):** Tentacle sends `DISCONNECT_VPN` when it's done (the player service
+  stops) or when the setting is switched off, but only if Tentacle turned Tailscale on. It records that
+  in a stored flag, which is cleared as soon as it finds the VPN off. A connection the user started is
+  never turned off automatically; the **Disconnect** button is the only exception.
+- **What Tentacle doesn't do:** it never reads Tailscale's state, account, keys or traffic, and never
+  embeds a VPN of its own.
 - **New permission:** `ACCESS_NETWORK_STATE` (granted at install; network state only, no traffic or
   data). It's used to see whether a VPN is up, and to wait for Tailscale's to appear.
 - **Package visibility:** `<queries>` now lists `com.tailscale.ipn` so Tentacle can detect the app.
-- **Reachability check** ("When the server can't be reached" mode): a TCP connection to the signed-in
+- **Only when needed (0.6.1):** the 0.6.0 "Always" option connected Tailscale even at home. It's
+  gone, and a saved "Always" now means "when needed".
+- **Reachability check:** a TCP connection to the signed-in
   server's own host and port, closed without sending anything, with a 1.5 s timeout.
 - **No loops:**
   - Concurrent triggers share one attempt.
@@ -231,7 +237,7 @@ Added in 0.6.0 for servers that are reachable only through Tailscale away from h
 Severity is the impact on a user of the app. Every finding below is **resolved**. "Obsolete" means the
 affected code was removed when the app became a standalone player in 0.3.0.
 
-### 6.0 Tailscale feature (0.6.0)
+### 6.0 Tailscale feature (0.6.0 and 0.6.1)
 
 The new code (`Tailscale.kt`, and its use in the player service, Settings and sign-in) was reviewed
 before release against the threat model in [section 3](#3-threat-model).
@@ -240,7 +246,9 @@ before release against the threat model in [section 3](#3-threat-model).
 |---|---|---|---|
 | T6-1 | Low (bug) | The timestamp that holds off retries after a failure was written on one thread and read on others without a memory barrier, so a retry could start too early | Marked `@Volatile` |
 | T6-2 | Info | On Android 16 and newer, Tailscale's automation broadcast sometimes only starts its service (Tailscale issue #18847) | The request is re-sent after 3 s if the VPN isn't up, as Tailscale advises. Tentacle waits up to 10 s in total, then reports "didn't connect" and offers **Open Tailscale**. |
-| T6-3 | Info | Another app could be installed under Tailscale's package name (only if sideloaded) | Accepted as R-9: the request carries no data, so an impostor learns only that Tentacle wanted to connect |
+| T6-3 | Info | Another app could be installed under Tailscale's package name (only if sideloaded) | Accepted as R-9: the requests carry no data, so an impostor learns only that Tentacle wanted to connect or disconnect |
+| T6-4 | Bug (behaviour) | Found by the owner in 0.6.0: the "Always" option connected Tailscale every time the app opened, even at home, and nothing ever turned it off again | 0.6.1: "Always" removed (a saved value now means "when needed"). Tentacle turns Tailscale off again when it's done or the setting is switched off, but only if it turned it on itself. Verified on the phone: Disconnect, reopening at home (stays off), switching off, and leaving the app (off within 5 s). |
+| T6-5 | Low (bug) | Stopping an attempt under way (for example switching the setting off) would have made anything waiting on it fail, including a car's library request | Waiters use `join()`, and `ensure()` reports "Stopped" instead of throwing |
 
 ### 6.1 After review 4 (0.5.0 and 0.5.1)
 
@@ -335,11 +343,11 @@ impact, apart from the controls listed in [5.7](#57-repository-and-supply-chain)
 
 ## 7. Verification
 
-Latest results (0.6.0):
+Latest results (0.6.1):
 
 | Check | Result |
 |---|---|
-| Unit tests | **30 / 30** pass in debug and release: ID validation, LAN detection, stream URLs without credentials, token only to the signed-in server, paging limits and overflow, artwork decode bounds, sign-in checks, Tailscale address detection and connect decisions |
+| Unit tests | **31 / 31** pass in debug and release: ID validation, LAN detection, stream URLs without credentials, token only to the signed-in server, paging limits and overflow, artwork decode bounds, sign-in checks, Tailscale address detection and connect decisions |
 | Android lint | 0 errors in debug and release. Remaining warnings are only newer library versions and translatable-string notes. |
 | Dependencies | **0 known vulnerabilities** in 130 shipped libraries (OSV, 2026-09-28). Details in [DEPENDENCIES.md](DEPENDENCIES.md). |
 | Release APK | Not debuggable. No backup. Explicit network security config. targetSdk 36. Diagnostic code absent. Exported components as in [section 4](#4-attack-surface). |

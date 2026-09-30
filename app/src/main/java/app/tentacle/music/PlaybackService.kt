@@ -107,6 +107,9 @@ class PlaybackService : MediaLibraryService() {
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? = session
 
     override fun onDestroy() {
+        // Tentacle is done (closed, nothing playing, the car gone): turn Tailscale off again if Tentacle
+        // turned it on. A connection the user started themselves is left alone.
+        Tailscale.disconnect(this, prefs, onlyIfStartedByTentacle = true)
         reporter.release()
         session?.release()
         session = null
@@ -243,10 +246,10 @@ class PlaybackService : MediaLibraryService() {
             val ownApp = isOwnApp(browser)
             return scope.future(Dispatchers.IO) {
                 Tailscale.awaitInFlight(TAILSCALE_WAIT_MS)
-                val serverPaged = ownApp && parentId == SONGS
+                val serverPaged = ownApp && isPagedList(parentId)
                 val entries = try {
-                    // Only this app's Songs tab pages on the server; everything else is built whole
-                    // (Android Auto gets whole lists or A–Z pickers) and sliced below if a page was asked for.
+                    // Only this app's long A–Z lists (songs, artists, albums) page on the server; everything else
+                    // is built whole (Android Auto gets whole lists or A–Z pickers) and sliced below if a page was asked for.
                     library.children(parentId, page, if (serverPaged) pageSize else Int.MAX_VALUE, withSongsTab = ownApp)
                         .let { if (parentId == Library.ROOT && !ownApp) it.take(rootLimit) else it }
                         .let { if (serverPaged) it else pageOf(it, page, pageSize) }
@@ -383,6 +386,9 @@ class PlaybackService : MediaLibraryService() {
     }
 
     private fun isOwnApp(controller: MediaSession.ControllerInfo) = controller.uid == Process.myUid()
+
+    /** Lists the phone app loads a page at a time as you scroll ([Library.PAGED_LISTS]). */
+    private fun isPagedList(parentId: String) = parentId in Library.PAGED_LISTS
 
     /**
      * The server couldn't be reached. If the Tailscale setting is on, asks Tailscale to connect; once it

@@ -11,7 +11,10 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,14 +32,19 @@ import kotlin.coroutines.resume
  * Optional helper for servers reached through Tailscale: asks the user's installed Tailscale app to
  * connect, using the public intent Tailscale provides for automation apps (the same one Tasker uses).
  *
- * Tentacle never sees the user's Tailscale account, keys or traffic, never turns Tailscale off, and
- * sends nothing with the request. If Tailscale isn't installed, isn't signed in, or doesn't come up,
- * nothing else happens: Tentacle just reports it, and the user can open Tailscale themselves.
+ * Tentacle connects Tailscale only when the server doesn't answer without it, and turns it off again
+ * (DISCONNECT_VPN) when it's done: when Tentacle closes or the setting is switched off. It only ever
+ * turns off a connection it started itself; if the user had Tailscale on already, it's left alone.
+ *
+ * Tentacle never sees the user's Tailscale account, keys or traffic, and the requests carry no data.
+ * If Tailscale isn't installed, isn't signed in, or doesn't come up, nothing else happens: Tentacle
+ * just reports it, and the user can open Tailscale themselves.
  */
 object Tailscale {
     const val PACKAGE = "com.tailscale.ipn"
     private const val RECEIVER = "com.tailscale.ipn.IPNReceiver"
     private const val ACTION_CONNECT = "com.tailscale.ipn.CONNECT_VPN"
+    private const val ACTION_DISCONNECT = "com.tailscale.ipn.DISCONNECT_VPN"
 
     /** How long a connect attempt waits for the VPN before sending the request again, then in total. */
     private const val FIRST_WAIT_MS = 3_000L
@@ -56,6 +64,7 @@ object Tailscale {
         CONNECTED("Tailscale connected."),
         WAITING("Tailscale didn't connect a moment ago. Tentacle will try again shortly."),
         FAILED("Tailscale didn't connect. Open the Tailscale app, check you're signed in, and connect there."),
+        STOPPED("Stopped."),
     }
 
     private val lock = Any()
@@ -100,22 +109,47 @@ object Tailscale {
         synchronized(lock) {
             inFlight?.takeIf { it.isActive }?.let { return it }
             val app = context.applicationContext
-            AppScope.async { attempt(app, prefs.tailscaleMode, force, serverUrl) }.also { inFlight = it }
+            AppScope.async { attempt(app, prefs, force, serverUrl) }.also { inFlight = it }
         }
 
-    suspend fun ensure(context: Context, prefs: Prefs, force: Boolean = false, serverUrl: String = prefs.serverUrl): Outcome =
-        ensureAsync(context, prefs, force, serverUrl).await()
-
-    /** Waits (up to [maxMs]) for an attempt already under way, so a library request doesn't race it. */
-    suspend fun awaitInFlight(maxMs: Long) {
-        val job = synchronized(lock) { inFlight?.takeIf { it.isActive } } ?: return
-        withTimeoutOrNull(maxMs) { job.await() }
+    /**
+     * Turns Tailscale off. With [onlyIfStartedByTentacle] (closing Tentacle, switching the setting off)
+     * it does so only if Tentacle turned it on; otherwise (the user's "Disconnect" button) always.
+     * Returns true if the request was sent.
+     */
+    fun disconnect(context: Context, prefs: Prefs, onlyIfStartedByTentacle: Boolean): Boolean {
+        synchronized(lock) { inFlight?.cancel() }
+        if (onlyIfStartedByTentacle && !prefs.tailscaleStartedByTentacle) return false
+        prefs.tailscaleStartedByTentacle = false
+        if (!isInstalled(context)) return false
+        context.sendBroadcast(Intent(ACTION_DISCONNECT).setComponent(ComponentName(PACKAGE, RECEIVER)))
+        return true
     }
 
-    private suspend fun attempt(context: Context, mode: TailscaleMode, force: Boolean, serverUrl: String): Outcome {
+    suspend fun ensure(context: Context, prefs: Prefs, force: Boolean = false, serverUrl: String = prefs.serverUrl): Outcome =
+        try {
+            ensureAsync(context, prefs, force, serverUrl).await()
+        } catch (e: CancellationException) {
+            currentCoroutineContext().ensureActive() // our caller was cancelled: pass that on
+            Outcome.STOPPED // the attempt was stopped by disconnect()
+        }
+
+    /**
+     * Waits (up to [maxMs]) for an attempt already under way, so a library request doesn't race it.
+     * Uses join(), not await(): an attempt stopped by disconnect() must not fail the request.
+     */
+    suspend fun awaitInFlight(maxMs: Long) {
+        val job = synchronized(lock) { inFlight?.takeIf { it.isActive } } ?: return
+        withTimeoutOrNull(maxMs) { job.join() }
+    }
+
+    private suspend fun attempt(context: Context, prefs: Prefs, force: Boolean, serverUrl: String): Outcome {
+        val vpnActive = isVpnActive(context)
+        // Tailscale was turned off by someone else since Tentacle turned it on: it's no longer ours to turn off.
+        if (!vpnActive) prefs.tailscaleStartedByTentacle = false
         val coolingDown = System.currentTimeMillis() - lastFailureMs in 0 until RETRY_AFTER_FAILURE_MS
-        precheck(mode, force, isInstalled(context), isVpnActive(context), coolingDown)?.let { return it }
-        if (!force && mode == TailscaleMode.WHEN_NEEDED && isReachable(serverUrl)) return Outcome.SERVER_REACHABLE
+        precheck(prefs.tailscaleMode, force, isInstalled(context), vpnActive, coolingDown)?.let { return it }
+        if (!force && isReachable(serverUrl)) return Outcome.SERVER_REACHABLE
 
         // Tailscale's own advice for Android 16+: the first request may only start its service, so
         // ask again if the VPN isn't up after a few seconds.
@@ -125,6 +159,7 @@ object Tailscale {
             awaitVpn(context, TOTAL_WAIT_MS - FIRST_WAIT_MS)
         }
         if (up) {
+            prefs.tailscaleStartedByTentacle = true
             _connections.value++
             return Outcome.CONNECTED
         }

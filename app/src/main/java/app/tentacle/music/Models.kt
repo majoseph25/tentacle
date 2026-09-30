@@ -29,18 +29,20 @@ enum class StreamQuality(val kbps: Int, val label: String) {
     }
 }
 
-/** When Tentacle asks the Tailscale app to connect (see [Tailscale]). */
-enum class TailscaleMode(val label: String, val detail: String) {
-    OFF("Off", "Tentacle never touches Tailscale."),
-    WHEN_NEEDED(
-        "When the server can't be reached",
-        "Checks your server first, and connects Tailscale only if it doesn't answer, for example away from home.",
-    ),
-    ALWAYS("Always", "Connects Tailscale whenever Tentacle opens or your car connects."),
+/** Whether Tentacle may ask the Tailscale app to connect (see [Tailscale]). */
+enum class TailscaleMode {
+    OFF,
+
+    /** Only when the server doesn't answer without it (for example away from home). */
+    WHEN_NEEDED,
     ;
 
     companion object {
-        fun parse(name: String?): TailscaleMode = entries.firstOrNull { it.name == name } ?: OFF
+        /** 0.6.0 also had ALWAYS; it connected even at home, so it now means WHEN_NEEDED. */
+        fun parse(name: String?): TailscaleMode = when (name) {
+            "ALWAYS" -> WHEN_NEEDED
+            else -> entries.firstOrNull { it.name == name } ?: OFF
+        }
     }
 }
 

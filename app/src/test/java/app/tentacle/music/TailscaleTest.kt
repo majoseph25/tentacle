@@ -36,12 +36,12 @@ class TailscaleTest {
 
     @Test
     fun needsTheTailscaleApp() {
-        assertEquals(Outcome.NOT_INSTALLED, Tailscale.precheck(TailscaleMode.ALWAYS, force = true, installed = false, vpnActive = false, coolingDown = false))
+        assertEquals(Outcome.NOT_INSTALLED, Tailscale.precheck(TailscaleMode.WHEN_NEEDED, force = true, installed = false, vpnActive = false, coolingDown = false))
     }
 
     @Test
     fun doesNothingWhenAVpnIsAlreadyUp() {
-        assertEquals(Outcome.ALREADY_CONNECTED, Tailscale.precheck(TailscaleMode.ALWAYS, force = false, installed = true, vpnActive = true, coolingDown = false))
+        assertEquals(Outcome.ALREADY_CONNECTED, Tailscale.precheck(TailscaleMode.WHEN_NEEDED, force = false, installed = true, vpnActive = true, coolingDown = false))
     }
 
     @Test
@@ -55,5 +55,11 @@ class TailscaleTest {
         assertEquals(TailscaleMode.OFF, TailscaleMode.parse(null))
         assertEquals(TailscaleMode.OFF, TailscaleMode.parse("SOMETIMES"))
         assertEquals(TailscaleMode.WHEN_NEEDED, TailscaleMode.parse("WHEN_NEEDED"))
+    }
+
+    @Test
+    fun theOldAlwaysSettingBecomesOnlyWhenNeeded() {
+        // 0.6.0's "Always" connected Tailscale even at home; it's gone, and saved copies of it mean "when needed".
+        assertEquals(TailscaleMode.WHEN_NEEDED, TailscaleMode.parse("ALWAYS"))
     }
 }

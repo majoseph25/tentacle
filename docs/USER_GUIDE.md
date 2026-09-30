@@ -41,8 +41,10 @@ Three tabs along the bottom: **Now playing**, **Library** and **Settings**.
   - Recently added albums
 - **Songs:** every song A–Z with letter headings. It loads more as you scroll. **Shuffle all songs** is at
   the top.
-- **Albums:** choose a sort order (A–Z, By artist, Newest releases, Recently added) to see covers in a grid.
-- **Artists:** A–Z. An artist shows **Play all**, **Shuffle** and their albums, newest first.
+- **Albums:** every album as a grid of covers, A–Z with letter headings. The buttons along the top switch
+  the order: **A–Z**, **By artist**, **Newest releases** or **Recently added**. It loads more as you scroll.
+- **Artists:** every artist A–Z with letter headings, loading more as you scroll. An artist shows
+  **Play all**, **Shuffle** and their albums, newest first.
 - **Playlists:** your playlists with song counts.
 
 Inside an album, tracks are numbered, with durations and a heading per disc. **Play all** and **Shuffle**
@@ -87,35 +89,31 @@ If your server isn't on the internet and you reach it through [Tailscale](https:
 you're out, Tentacle can turn Tailscale on for you. You need the Tailscale app installed and signed in
 on your phone.
 
-In **Settings → Remote access with Tailscale**, choose when Tentacle connects it:
+Turn on **Settings → Remote access with Tailscale → Connect when your server can't be reached**. It's
+off by default.
 
-| Option | What happens |
-|---|---|
-| **Off** (default) | Tentacle never touches Tailscale. |
-| **When the server can't be reached** | Tentacle checks your server first, and connects Tailscale only if the server doesn't answer, for example when you leave home. Recommended. |
-| **Always** | Tentacle connects Tailscale whenever you open it or your car connects. |
+**When it's on:**
+- **Connecting only when needed.** Tentacle checks your server first, and connects Tailscale only if the
+  server doesn't answer. At home it answers, so Tailscale stays off. Tentacle checks when you open it,
+  when your car connects, and when a song or a list can't load. Once Tailscale is up, lists reload and the
+  song carries on by themselves.
+- **Turning it off again.** Tentacle turns Tailscale off when you're done: when you close Tentacle, or
+  when the music stops and the car disconnects. It stays on for as long as music is playing.
+- **Switching the setting off** also turns Tailscale off, if Tentacle was the one that turned it on.
+- **Your own Tailscale connection is left alone.** If you turned Tailscale on yourself, Tentacle never
+  turns it off automatically.
 
-Tentacle connects Tailscale:
-- when you open the app,
-- when your car connects,
-- when a song or a list can't load because the server can't be reached.
-
-Once Tailscale is up, lists reload and the song carries on by themselves.
-
-Other buttons:
-- **Connect now:** connects Tailscale straight away, whatever the setting.
+Buttons:
+- **Connect now / Disconnect:** turns Tailscale on or off straight away, whatever the setting.
 - **Open Tailscale:** opens the app, if you need to sign in or check something there.
 - **Signing in:** if your server can't be reached while you sign in, the sign-in screen offers
   **Connect Tailscale and try again**.
 
 Good to know:
-- **Tentacle only asks Tailscale to connect.** It never sees your Tailscale account or traffic, and never
-  turns Tailscale off.
-- **Tentacle doesn't need Tailscale when a VPN is already on.** Android runs one VPN at a time, so if
+- **Tentacle only asks Tailscale to connect or disconnect.** It never sees your Tailscale account or
+  traffic.
+- **Tentacle doesn't connect Tailscale when a VPN is already on.** Android runs one VPN at a time, so if
   another VPN is connected, turn it off first.
-- **Most reliable option:** make Tailscale your always-on VPN (Android **Settings → Network & internet →
-  VPN → ⚙ next to Tailscale → Always-on VPN**). Then it's always connected and Tentacle doesn't need to
-  do anything.
 - **If Tailscale doesn't connect** ("Tailscale didn't connect"), open the Tailscale app and connect it
   once by hand. On some newer Android versions Tailscale can't start itself from the background until it
   has been opened.
