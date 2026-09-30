@@ -6,7 +6,7 @@
 | **Reviews** | Four full reviews (2026-09-27 to 2026-09-28), plus assessments of every later change |
 | **Last updated** | 2026-09-29 |
 | **Performed by** | Claude (Anthropic's AI model), working in [Claude Code](https://claude.com/claude-code) for the project owner, Mark Joseph |
-| **Current status** | 0 open findings · 31 / 31 tests pass · 0 known vulnerabilities in 130 shipped libraries |
+| **Current status** | 0 open findings · 33 / 33 tests pass · 0 known vulnerabilities in 130 shipped libraries |
 
 > **Please read this first.** These reviews were carried out by an AI assistant: code review, static
 > analysis, dependency scanning, build inspection and testing on one phone. They are **not** a professional
@@ -158,6 +158,9 @@ item is rebuilt from a validated item ID. A request for more than 500 items is c
 
 - **Item IDs:** every ID that reaches a URL path or a file name must match `[A-Za-z0-9-]{1,64}`, which
   rules out path traversal.
+- **IDs from other apps** (artwork requests, 0.6.1): only a Jellyfin GUID is accepted. It's rebuilt from
+  its numeric value (`canonicalItemId`), so none of the requesting app's text reaches the cache file name
+  or the server URL.
 - **Cover art** (which can come from any file in a library): the dimensions are read before decoding, the
   image is downsampled to at most 1024 px, anything over 20,000 px is refused, and out-of-memory is caught.
 - **The phone app's artwork loader** opens only this app's own provider and icons, through a fixed table.
@@ -236,6 +239,22 @@ Added in 0.6.0 for servers that are reachable only through Tailscale away from h
 
 Severity is the impact on a user of the app. Every finding below is **resolved**. "Obsolete" means the
 affected code was removed when the app became a standalone player in 0.3.0.
+
+### 6.0a GitHub code scanning (CodeQL, 0.6.1)
+
+CodeQL's first scan of the public repository reported five alerts. All five trace one input: the item ID
+in an artwork request (`ArtworkProvider.openFile`, from the requesting app's `content://` URI) flowing
+into the cache file name (`java/path-injection`) and the server request (`java/ssrf`).
+
+| Alert | Rule (CodeQL severity) | Where | Assessment | Resolution |
+|---|---|---|---|---|
+| #1 | `java/ssrf` (critical) | `JellyfinApi.kt` request URL | **Not exploitable.** The host is always the signed-in server, and the ID can only fill one path segment, restricted to `[A-Za-z0-9-]`. Only trusted callers (Android Auto, Assistant, the system) get past `ClientAccess`. | The ID is rebuilt from its numeric value as a canonical GUID (`canonicalItemId`), so no caller text reaches the URL |
+| #2–#5 | `java/path-injection` (high) | `ArtworkProvider.kt` cache file | **Not exploitable.** `requireSafeId` rejected `/`, `.` and `%` before the ID was used, so it couldn't leave the cache folder. CodeQL doesn't treat that check as a sanitizer. | Same fix: the file name is built only from the rebuilt GUID |
+
+The underlying check was already in place, so these are hardening fixes rather than vulnerabilities
+closed. Unit tests cover the new check (`canonicalItemIdAcceptsJellyfinGuids`,
+`canonicalItemIdRejectsEverythingElse`). The alerts close automatically once CodeQL re-scans `main`
+after the merge.
 
 ### 6.0 Tailscale feature (0.6.0 and 0.6.1)
 
@@ -347,12 +366,13 @@ Latest results (0.6.1):
 
 | Check | Result |
 |---|---|
-| Unit tests | **31 / 31** pass in debug and release: ID validation, LAN detection, stream URLs without credentials, token only to the signed-in server, paging limits and overflow, artwork decode bounds, sign-in checks, Tailscale address detection and connect decisions |
+| Unit tests | **33 / 33** pass in debug and release: ID validation, LAN detection, stream URLs without credentials, token only to the signed-in server, paging limits and overflow, artwork decode bounds, sign-in checks, Tailscale address detection and connect decisions, GUID rebuilding for artwork IDs |
 | Android lint | 0 errors in debug and release. Remaining warnings are only newer library versions and translatable-string notes. |
 | Dependencies | **0 known vulnerabilities** in 130 shipped libraries (OSV, 2026-09-28). Details in [DEPENDENCIES.md](DEPENDENCIES.md). |
 | Release APK | Not debuggable. No backup. Explicit network security config. targetSdk 36. Diagnostic code absent. Exported components as in [section 4](#4-attack-surface). |
 | Repository | No secrets or personal data: scanned before the first push, and the full git history again before going public |
 | CI on GitHub | Passing |
+| Code scanning (CodeQL) | 5 alerts on the first scan, all one input, addressed in 0.6.1 ([6.0a](#60a-github-code-scanning-codeql-061)) |
 | On the phone | Installs and runs. Streaming playback confirmed. The Songs crash (B4-1) and exit crash (B5-1) are fixed and re-tested. Phone screens checked by screenshot (dark mode). |
 | Android Auto (Desktop Head Unit, 2026-09-29) | Listed in the app list with its icon. Opens on Now playing without autoplaying (MA-1). Home, Albums (sort folders, year-grouped grid with artwork and placeholder icons) and an album page browse correctly. A song plays from the car. Shuffle and repeat toggle. The connection log shows Android Auto and the Google app allowed. No crashes. |
 | In a car (2026-09-29) | Playback and now-playing work, and steering-wheel buttons skip tracks. The app list needed **Unknown sources** (see [6.1](#61-after-review-4-050-and-051)). |

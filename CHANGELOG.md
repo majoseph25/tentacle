@@ -18,6 +18,13 @@ All notable changes to Tentacle. Versions follow `versionName` / `versionCode` i
   **By artist**, **Newest releases** and **Recently added** as buttons along the top. The car keeps the
   letter picker for large libraries, since Android Auto can't load long lists a page at a time.
 
+### Security
+- **GitHub code scanning.** CodeQL reported 5 alerts (1 server-side request forgery, 4 path injection),
+  all from one input: the item ID in an artwork request from another app. None was exploitable, because
+  the ID was already restricted to letters, digits and dashes and only trusted apps can make the request.
+  The ID is now accepted only as a Jellyfin GUID and rebuilt from its numeric value, so none of the
+  requesting app's text reaches the cache file name or the server URL.
+
 ### Fixed
 - **Stopping Tailscale mid-attempt.** Stopping a Tailscale attempt while one was under way (for example
   switching the setting off) could have failed a library request that was waiting for it.

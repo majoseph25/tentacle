@@ -4,6 +4,7 @@
 package app.tentacle.music
 
 import java.io.IOException
+import java.util.Locale
 
 data class Auth(val token: String, val userId: String, val userName: String)
 
@@ -86,3 +87,18 @@ fun requireSafeId(id: String): String {
 }
 
 fun isSafeId(id: String): Boolean = SAFE_ID.matches(id)
+
+private val GUID = Regex("[0-9A-Fa-f]{32}|[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}")
+
+/**
+ * A Jellyfin item id (a GUID, with or without dashes) in canonical form (32 lowercase hex digits), or
+ * null if it isn't one. For ids that come from another app (artwork requests): the result is rebuilt
+ * from the id's numeric value, so none of the caller's text reaches a file name or a URL.
+ */
+fun canonicalItemId(id: String): String? {
+    if (!GUID.matches(id)) return null
+    val hex = id.replace("-", "")
+    val high = java.lang.Long.parseUnsignedLong(hex.substring(0, 16), 16)
+    val low = java.lang.Long.parseUnsignedLong(hex.substring(16), 16)
+    return java.lang.String.format(Locale.ROOT, "%016x%016x", high, low)
+}
