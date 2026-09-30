@@ -23,6 +23,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -36,6 +37,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.autofill.ContentType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentType
@@ -46,7 +48,9 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import app.tentacle.music.Account
 import app.tentacle.music.BuildConfig
+import app.tentacle.music.JellyfinApi
 import app.tentacle.music.R
+import app.tentacle.music.Tailscale
 import kotlinx.coroutines.launch
 
 @Composable
@@ -60,19 +64,26 @@ fun SignInScreen(account: Account, onSignedIn: () -> Unit, contentPadding: Paddi
     var status by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
     var insecureConfirmedFor by remember { mutableStateOf<String?>(null) }
+    // Set when the server didn't answer and Tailscale is installed: offer to connect it and retry.
+    var offerTailscale by remember { mutableStateOf(false) }
+    val context = LocalContext.current
 
     fun submit() {
         if (busy) return
         focus.clearFocus()
         busy = true
         status = null
+        offerTailscale = false
         scope.launch {
             when (val result = account.signIn(server, user, password, allowInsecure = insecureConfirmedFor == server)) {
                 Account.SignInResult.SignedIn -> {
                     password = ""
                     onSignedIn()
                 }
-                is Account.SignInResult.Failed -> status = result.message
+                is Account.SignInResult.Failed -> {
+                    status = result.message
+                    offerTailscale = result.unreachable && Tailscale.isInstalled(context)
+                }
                 is Account.SignInResult.InsecureWarning -> {
                     insecureConfirmedFor = server
                     status = "Warning: ${result.host} is not on your home network, and http:// is unencrypted. " +
@@ -137,6 +148,24 @@ fun SignInScreen(account: Account, onSignedIn: () -> Unit, contentPadding: Paddi
                 if (busy) CircularProgressIndicator(Modifier.size(24.dp))
             }
             status?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
+            if (offerTailscale && !busy) {
+                OutlinedButton(onClick = {
+                    busy = true
+                    offerTailscale = false
+                    status = "Connecting Tailscale…"
+                    scope.launch {
+                        val outcome = Tailscale.ensure(
+                            context, account.prefs, force = true, serverUrl = JellyfinApi.normalizeUrl(server),
+                        )
+                        busy = false
+                        if (outcome == Tailscale.Outcome.CONNECTED || outcome == Tailscale.Outcome.ALREADY_CONNECTED) {
+                            submit()
+                        } else {
+                            status = outcome.message
+                        }
+                    }
+                }) { Text("Connect Tailscale and try again") }
+            }
         }
         Spacer(Modifier.height(16.dp))
         Text(

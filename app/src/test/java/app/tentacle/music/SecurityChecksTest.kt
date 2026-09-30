@@ -33,6 +33,25 @@ class SecurityChecksTest {
         assertFalse(isSafeId(""))
     }
 
+    // ---- artwork ids from other apps (rebuilt, never passed through) ----
+
+    @Test
+    fun canonicalItemIdAcceptsJellyfinGuids() {
+        assertEquals("0123456789abcdef0123456789abcdef", canonicalItemId("0123456789abcdef0123456789abcdef"))
+        assertEquals("0123456789abcdef0123456789abcdef", canonicalItemId("01234567-89AB-CDEF-0123-456789ABCDEF"))
+        assertEquals("ffffffffffffffffffffffffffffffff", canonicalItemId("ffffffffffffffffffffffffffffffff"))
+        assertEquals("00000000000000000000000000000001", canonicalItemId("00000000000000000000000000000001"))
+    }
+
+    @Test
+    fun canonicalItemIdRejectsEverythingElse() {
+        listOf(
+            "", "..", "../x", "a/b", "abc", "0123456789abcdef0123456789abcde", "0123456789abcdef0123456789abcdef0",
+            "0123456789abcdef0123456789abcdeg", "01234567-89ab-cdef-0123-456789abcde", "0123456789abcdef0123456789abcde/",
+            "-0123456789abcdef0123456789abcde", "01234567--89abcdef0123-456789abcdef",
+        ).forEach { assertEquals(it, null, canonicalItemId(it)) }
+    }
+
     // ---- LAN detection (cleartext warning, default scheme) ----
 
     @Test

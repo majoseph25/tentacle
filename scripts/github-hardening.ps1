@@ -1,4 +1,4 @@
-﻿# Copyright 2026 Mark Joseph
+# Copyright 2026 Mark Joseph
 # SPDX-License-Identifier: Apache-2.0
 #
 # Turns on the GitHub security settings recommended in docs/SECURITY_ASSESSMENT.md.

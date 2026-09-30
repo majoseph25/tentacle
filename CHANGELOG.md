@@ -2,6 +2,68 @@
 
 All notable changes to Tentacle. Versions follow `versionName` / `versionCode` in `app/build.gradle.kts`.
 
+## 0.6.1 (build 8) — 2026-09-29
+
+### Changed
+- **Tailscale connects only when it's needed, and turns off again.** In 0.6.0, **Always** connected
+  Tailscale every time the app opened, even at home, and nothing turned it off.
+  - **The setting** is now a single switch: **Connect when your server can't be reached**. A saved
+    "Always" becomes this.
+  - **Turning it off:** Tentacle turns Tailscale off when you're done (you close Tentacle, or the music
+    stops and the car disconnects), and when you switch the setting off, but only if Tentacle turned it
+    on. A Tailscale connection you started yourself is left alone.
+  - **Disconnect button:** Settings shows **Disconnect** while a VPN is on.
+- **Albums and Artists list every album and artist A–Z** on the phone, loading more as you scroll,
+  instead of an A–Z letter picker. The Albums tab opens straight onto the album grid, with **A–Z**,
+  **By artist**, **Newest releases** and **Recently added** as buttons along the top. The car keeps the
+  letter picker for large libraries, since Android Auto can't load long lists a page at a time.
+
+### Security
+- **GitHub code scanning.** CodeQL reported 5 alerts (1 server-side request forgery, 4 path injection),
+  all from one input: the item ID in an artwork request from another app. None was exploitable, because
+  the ID was already restricted to letters, digits and dashes and only trusted apps can make the request.
+  The ID is now accepted only as a Jellyfin GUID and rebuilt from its numeric value, so none of the
+  requesting app's text reaches the cache file name or the server URL.
+
+### Fixed
+- **Stopping Tailscale mid-attempt.** Stopping a Tailscale attempt while one was under way (for example
+  switching the setting off) could have failed a library request that was waiting for it.
+
+## 0.6.0 (build 7) — 2026-09-29
+
+### Added
+- **Tailscale support (optional).** For servers you reach through Tailscale away from home.
+  - **Settings → Remote access with Tailscale:** choose **Off** (the default), **When the server can't be
+    reached** (recommended) or **Always**.
+  - **When it connects:** Tentacle asks the Tailscale app to connect when you open Tentacle, when your car
+    connects, or when a list or song can't load. Once Tailscale is up, lists reload and the song
+    resumes.
+  - **Buttons:** **Connect now** and **Open Tailscale**, plus a VPN status line.
+  - **Sign-in:** offers **Connect Tailscale and try again** when the server can't be reached.
+  - **Scope:** Tentacle only asks Tailscale to connect. It never reads your Tailscale account or traffic,
+    and never turns Tailscale off. New permission: `ACCESS_NETWORK_STATE`, to see whether a VPN is up.
+  - **Tested** on a Pixel 8a with Android 17 and Tailscale 1.102.4. Tentacle turned Tailscale on, and
+    the library loaded through it.
+
+### Fixed
+- **Garbled characters in two docs.** The architecture doc's diagrams and a line in `SECURITY.md` had
+  garbled characters from a documentation edit. Both are repaired.
+
+## 0.5.1 (build 6) — 2026-09-29
+
+### Fixed
+- **"All songs" in Android Auto.** On the car's Home screen, **All songs** was drawn as a large tile with
+  its title hidden below the fold. It's now a normal list row.
+
+### Tested
+- **Android Auto,** on the Desktop Head Unit:
+  - Tentacle is listed, with its icon, and opens without autoplaying.
+  - Browsing, album artwork and playback work, and shuffle and repeat toggle.
+  - Android Auto passes the access check.
+- **In a car:** playback and steering-wheel controls work. Tentacle was missing from the car's app list
+  because Android Auto hides apps not installed from Google Play until **Unknown sources** is turned on.
+  The user guide's troubleshooting table now explains this.
+
 ## Repository (2026-09-29)
 
 - **Published on GitHub,** public since 2026-09-29 and tagged `v0.5.0`. Includes Android CI, Dependabot,

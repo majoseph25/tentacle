@@ -31,6 +31,18 @@ class Prefs(context: Context) {
         get() = StreamQuality.parse(sp.getString("streamQuality", null))
         set(v) = sp.edit { putString("streamQuality", v.name) }
 
+    var tailscaleMode: TailscaleMode
+        get() = TailscaleMode.parse(sp.getString("tailscaleMode", null))
+        set(v) = sp.edit { putString("tailscaleMode", v.name) }
+
+    /**
+     * True while Tailscale is on because Tentacle turned it on, so Tentacle may turn it off again.
+     * Stored (not just in memory) so it survives the app process being stopped.
+     */
+    var tailscaleStartedByTentacle: Boolean
+        get() = sp.getBoolean("tailscaleStartedByTentacle", false)
+        set(v) = sp.edit { putBoolean("tailscaleStartedByTentacle", v) }
+
     /** Stable id for this install. Locked so the service and the UI can't each create a different one. */
     val deviceId: String
         get() = synchronized(DEVICE_ID_LOCK) {

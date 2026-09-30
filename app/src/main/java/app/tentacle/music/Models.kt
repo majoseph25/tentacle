@@ -4,6 +4,7 @@
 package app.tentacle.music
 
 import java.io.IOException
+import java.util.Locale
 
 data class Auth(val token: String, val userId: String, val userName: String)
 
@@ -29,6 +30,23 @@ enum class StreamQuality(val kbps: Int, val label: String) {
     }
 }
 
+/** Whether Tentacle may ask the Tailscale app to connect (see [Tailscale]). */
+enum class TailscaleMode {
+    OFF,
+
+    /** Only when the server doesn't answer without it (for example away from home). */
+    WHEN_NEEDED,
+    ;
+
+    companion object {
+        /** 0.6.0 also had ALWAYS; it connected even at home, so it now means WHEN_NEEDED. */
+        fun parse(name: String?): TailscaleMode = when (name) {
+            "ALWAYS" -> WHEN_NEEDED
+            else -> entries.firstOrNull { it.name == name } ?: OFF
+        }
+    }
+}
+
 data class BrowseEntry(
     val mediaId: String,
     val title: String,
@@ -42,6 +60,8 @@ data class BrowseEntry(
     val browsableStyle: ContentStyle? = null,
     /** How this node's playable children are drawn. */
     val playableStyle: ContentStyle? = null,
+    /** How this row itself is drawn, overriding its parent's hint (e.g. a folder row among album tiles). */
+    val itemStyle: ContentStyle? = null,
     /** Shown when [artItemId] is null or its image can't be loaded. */
     val icon: IconKind = IconKind.SONG,
 ) {
@@ -67,3 +87,18 @@ fun requireSafeId(id: String): String {
 }
 
 fun isSafeId(id: String): Boolean = SAFE_ID.matches(id)
+
+private val GUID = Regex("[0-9A-Fa-f]{32}|[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}")
+
+/**
+ * A Jellyfin item id (a GUID, with or without dashes) in canonical form (32 lowercase hex digits), or
+ * null if it isn't one. For ids that come from another app (artwork requests): the result is rebuilt
+ * from the id's numeric value, so none of the caller's text reaches a file name or a URL.
+ */
+fun canonicalItemId(id: String): String? {
+    if (!GUID.matches(id)) return null
+    val hex = id.replace("-", "")
+    val high = java.lang.Long.parseUnsignedLong(hex.substring(0, 16), 16)
+    val low = java.lang.Long.parseUnsignedLong(hex.substring(16), 16)
+    return java.lang.String.format(Locale.ROOT, "%016x%016x", high, low)
+}

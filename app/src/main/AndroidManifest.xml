@@ -12,6 +12,9 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <!-- Keeps the Wi-Fi/CPU awake while streaming (ExoPlayer wake mode). -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- Optional Tailscale support: lets Tentacle see whether a VPN is up before asking Tailscale to
+         connect. Install-time permission; reveals only network state, not traffic. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <!-- Lets ClientAccess look up these callers (package visibility, Android 11+). -->
     <queries>
@@ -19,6 +22,8 @@
         <package android:name="com.google.android.googlequicksearchbox" />
         <package android:name="com.google.android.carassistant" />
         <package android:name="com.google.android.gms" />
+        <!-- Optional Tailscale support: detect the app and send it the connect request. -->
+        <package android:name="com.tailscale.ipn" />
     </queries>
 
     <!-- allowBackup covers cloud backup; dataExtractionRules also blocks device-to-device

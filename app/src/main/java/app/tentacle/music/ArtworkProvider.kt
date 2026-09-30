@@ -30,12 +30,9 @@ class ArtworkProvider : ContentProvider() {
         val ctx = context ?: return null
         if (!ClientAccess.isAllowed(ctx, Binder.getCallingUid())) throw SecurityException("Not allowed")
         if (mode != "r") throw FileNotFoundException("read-only")
-        val id = uri.lastPathSegment ?: throw FileNotFoundException("no id")
-        try {
-            requireSafeId(id)
-        } catch (e: JellyfinException) {
-            throw FileNotFoundException("bad id")
-        }
+        // The id comes from the requesting app. Only a Jellyfin GUID is accepted, rebuilt from its numeric
+        // value, so none of the caller's text reaches the cache file name or the server URL.
+        val id = uri.lastPathSegment?.let(::canonicalItemId) ?: throw FileNotFoundException("bad id")
 
         val dir = cacheDir(ctx).apply { mkdirs() }
         val file = File(dir, "$id.jpg")

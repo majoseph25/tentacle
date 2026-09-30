@@ -2,11 +2,11 @@
 
 | | |
 |---|---|
-| **App** | Tentacle 0.5.0 (build 5), Android |
+| **App** | Tentacle 0.6.1 (build 8), Android |
 | **Reviews** | Four full reviews (2026-09-27 to 2026-09-28), plus assessments of every later change |
 | **Last updated** | 2026-09-29 |
 | **Performed by** | Claude (Anthropic's AI model), working in [Claude Code](https://claude.com/claude-code) for the project owner, Mark Joseph |
-| **Current status** | 0 open findings · 22 / 22 tests pass · 0 known vulnerabilities in 130 shipped libraries |
+| **Current status** | 0 open findings · 33 / 33 tests pass · 0 known vulnerabilities in 130 shipped libraries |
 
 > **Please read this first.** These reviews were carried out by an AI assistant: code review, static
 > analysis, dependency scanning, build inspection and testing on one phone. They are **not** a professional
@@ -50,7 +50,8 @@ plays. The main protections:
 | 2 | 2026-09-28 | 0.1.0 | Car features, Google Play readiness | 9 | 9 (4 release blockers) | 0 |
 | 3 | 2026-09-28 | 0.2.0 | Compose phone app | 5 | 3 | 0 |
 | 4 | 2026-09-28 | 0.4.0 | Standalone player rewrite (Media3), Songs, search | 4 | 3 | 0 |
-| — | 2026-09-29 | 0.5.0 | Changes after review 4, GitHub setup | 0 | 1 | 0 |
+| — | 2026-09-29 | 0.5.0–0.5.1 | Changes after review 4, GitHub setup, Android Auto testing | 0 | 2 | 0 |
+| — | 2026-09-29 | 0.6.0–0.6.1 | Optional Tailscale connect, then connect only when needed and turn off again | 0 (1 accepted risk) | 3 | 0 |
 
 Version 0.3.0 replaced the original remote-control design, so several early findings are now **obsolete**:
 the code they concerned no longer exists. They're marked as such in [section 6](#6-findings).
@@ -96,6 +97,7 @@ Every review covered the whole project, with extra attention on what had changed
 | `BluetoothValidationActivity` (added by Media3) | Holders of `BLUETOOTH_PRIVILEGED` | Only the system Bluetooth stack can start it |
 | `ProfileInstallReceiver` (added by AndroidX) | Holders of `DUMP` | System and adb only |
 | Network | The signed-in Jellyfin server | See [5.2](#52-network-and-token-handling) |
+| Outgoing request to Tailscale (optional, 0.6.0) | Sent by Tentacle only | An explicit broadcast to Tailscale's own receiver, carrying no data. See [5.8](#58-optional-tailscale-connect). |
 | Stored data | The app's own sandbox | See [5.3](#53-credentials-and-storage) |
 
 ## 5. Security controls
@@ -156,6 +158,9 @@ item is rebuilt from a validated item ID. A request for more than 500 items is c
 
 - **Item IDs:** every ID that reaches a URL path or a file name must match `[A-Za-z0-9-]{1,64}`, which
   rules out path traversal.
+- **IDs from other apps** (artwork requests, 0.6.1): only a Jellyfin GUID is accepted. It's rebuilt from
+  its numeric value (`canonicalItemId`), so none of the requesting app's text reaches the cache file name
+  or the server URL.
 - **Cover art** (which can come from any file in a library): the dimensions are read before decoding, the
   image is downsampled to at most 1024 px, anything over 20,000 px is refused, and out-of-memory is caught.
 - **The phone app's artwork loader** opens only this app's own provider and icons, through a fixed table.
@@ -203,16 +208,78 @@ The repository went public on 2026-09-29. The GitHub settings above are applied 
 powershell -ExecutionPolicy Bypass -File scripts/github-hardening.ps1
 ```
 
+### 5.8 Optional Tailscale connect
+
+Added in 0.6.0 for servers that are reachable only through Tailscale away from home. Off by default.
+
+- **What Tentacle does:** asks the installed Tailscale app to connect, using the public
+  `com.tailscale.ipn.CONNECT_VPN` broadcast that Tailscale provides for automation apps. It's sent to
+  Tailscale's `IPNReceiver` by explicit component, so no other app can receive it, and it carries no data.
+- **Turning it off again (0.6.1):** Tentacle sends `DISCONNECT_VPN` when it's done (the player service
+  stops) or when the setting is switched off, but only if Tentacle turned Tailscale on. It records that
+  in a stored flag, which is cleared as soon as it finds the VPN off. A connection the user started is
+  never turned off automatically; the **Disconnect** button is the only exception.
+- **What Tentacle doesn't do:** it never reads Tailscale's state, account, keys or traffic, and never
+  embeds a VPN of its own.
+- **New permission:** `ACCESS_NETWORK_STATE` (granted at install; network state only, no traffic or
+  data). It's used to see whether a VPN is up, and to wait for Tailscale's to appear.
+- **Package visibility:** `<queries>` now lists `com.tailscale.ipn` so Tentacle can detect the app.
+- **Only when needed (0.6.1):** the 0.6.0 "Always" option connected Tailscale even at home. It's
+  gone, and a saved "Always" now means "when needed".
+- **Reachability check:** a TCP connection to the signed-in
+  server's own host and port, closed without sending anything, with a 1.5 s timeout.
+- **No loops:**
+  - Concurrent triggers share one attempt.
+  - After a failed attempt, automatic triggers wait 60 s before trying again.
+  - A failed song is retried once, and only after Tailscale actually came up.
+- **Android Auto time limit:** car requests wait at most 7 s for an attempt already under way, leaving
+  room within the 10 s limit (DR-3). If Tailscale comes up later, the car's lists reload by themselves.
+
 ## 6. Findings
 
 Severity is the impact on a user of the app. Every finding below is **resolved**. "Obsolete" means the
 affected code was removed when the app became a standalone player in 0.3.0.
 
-### 6.1 After review 4 (0.5.0)
+### 6.0a GitHub code scanning (CodeQL, 0.6.1)
+
+CodeQL's first scan of the public repository reported five alerts. All five trace one input: the item ID
+in an artwork request (`ArtworkProvider.openFile`, from the requesting app's `content://` URI) flowing
+into the cache file name (`java/path-injection`) and the server request (`java/ssrf`).
+
+| Alert | Rule (CodeQL severity) | Where | Assessment | Resolution |
+|---|---|---|---|---|
+| #1 | `java/ssrf` (critical) | `JellyfinApi.kt` request URL | **Not exploitable.** The host is always the signed-in server, and the ID can only fill one path segment, restricted to `[A-Za-z0-9-]`. Only trusted callers (Android Auto, Assistant, the system) get past `ClientAccess`. | The ID is rebuilt from its numeric value as a canonical GUID (`canonicalItemId`), so no caller text reaches the URL |
+| #2–#5 | `java/path-injection` (high) | `ArtworkProvider.kt` cache file | **Not exploitable.** `requireSafeId` rejected `/`, `.` and `%` before the ID was used, so it couldn't leave the cache folder. CodeQL doesn't treat that check as a sanitizer. | Same fix: the file name is built only from the rebuilt GUID |
+
+The underlying check was already in place, so these are hardening fixes rather than vulnerabilities
+closed. Unit tests cover the new check (`canonicalItemIdAcceptsJellyfinGuids`,
+`canonicalItemIdRejectsEverythingElse`). The alerts close automatically once CodeQL re-scans `main`
+after the merge.
+
+### 6.0 Tailscale feature (0.6.0 and 0.6.1)
+
+The new code (`Tailscale.kt`, and its use in the player service, Settings and sign-in) was reviewed
+before release against the threat model in [section 3](#3-threat-model).
+
+| ID | Severity | Finding | Resolution |
+|---|---|---|---|
+| T6-1 | Low (bug) | The timestamp that holds off retries after a failure was written on one thread and read on others without a memory barrier, so a retry could start too early | Marked `@Volatile` |
+| T6-2 | Info | On Android 16 and newer, Tailscale's automation broadcast sometimes only starts its service (Tailscale issue #18847) | The request is re-sent after 3 s if the VPN isn't up, as Tailscale advises. Tentacle waits up to 10 s in total, then reports "didn't connect" and offers **Open Tailscale**. |
+| T6-3 | Info | Another app could be installed under Tailscale's package name (only if sideloaded) | Accepted as R-9: the requests carry no data, so an impostor learns only that Tentacle wanted to connect or disconnect |
+| T6-4 | Bug (behaviour) | Found by the owner in 0.6.0: the "Always" option connected Tailscale every time the app opened, even at home, and nothing ever turned it off again | 0.6.1: "Always" removed (a saved value now means "when needed"). Tentacle turns Tailscale off again when it's done or the setting is switched off, but only if it turned it on itself. Verified on the phone: Disconnect, reopening at home (stays off), switching off, and leaving the app (off within 5 s). |
+| T6-5 | Low (bug) | Stopping an attempt under way (for example switching the setting off) would have made anything waiting on it fail, including a car's library request | Waiters use `join()`, and `ensure()` reports "Stopped" instead of throwing |
+
+### 6.1 After review 4 (0.5.0 and 0.5.1)
 
 | ID | Severity | Finding | Resolution |
 |---|---|---|---|
 | B5-1 | Bug (crash) | The app crashed every time it was left: the reconnect logic from B4-3 released the Media3 controller twice | References cleared before release; reconnects only after disconnects the app didn't request. Verified on the phone. |
+| B5-2 | Bug (display) | In Android Auto, Home → **All songs** was drawn as a large album-style tile with its title pushed below the fold, because Home asks for its browsable rows as a grid | The row now carries Android Auto's per-item style hint (`CONTENT_STYLE_SINGLE_ITEM_HINT` = list). Fixed in 0.5.1 and verified on the Desktop Head Unit. |
+
+**Not a code defect:** in the first car test, Tentacle was missing from the car's app list. The connection
+log was empty (Android Auto never asked for the library), and the app was sideloaded. Android Auto hides
+sideloaded media apps until **Unknown sources** is turned on in its developer settings. With it on,
+Tentacle was listed and worked. Apps installed from Google Play aren't affected.
 
 Branding, the green theme, the licence files and the GitHub setup were assessed and have no security
 impact, apart from the controls listed in [5.7](#57-repository-and-supply-chain).
@@ -295,32 +362,39 @@ impact, apart from the controls listed in [5.7](#57-repository-and-supply-chain)
 
 ## 7. Verification
 
-Latest results (0.5.0):
+Latest results (0.6.1):
 
 | Check | Result |
 |---|---|
-| Unit tests | **22 / 22** pass in debug and release: ID validation, LAN detection, stream URLs without credentials, token only to the signed-in server, paging limits and overflow, artwork decode bounds, sign-in checks |
+| Unit tests | **33 / 33** pass in debug and release: ID validation, LAN detection, stream URLs without credentials, token only to the signed-in server, paging limits and overflow, artwork decode bounds, sign-in checks, Tailscale address detection and connect decisions, GUID rebuilding for artwork IDs |
 | Android lint | 0 errors in debug and release. Remaining warnings are only newer library versions and translatable-string notes. |
 | Dependencies | **0 known vulnerabilities** in 130 shipped libraries (OSV, 2026-09-28). Details in [DEPENDENCIES.md](DEPENDENCIES.md). |
 | Release APK | Not debuggable. No backup. Explicit network security config. targetSdk 36. Diagnostic code absent. Exported components as in [section 4](#4-attack-surface). |
 | Repository | No secrets or personal data: scanned before the first push, and the full git history again before going public |
 | CI on GitHub | Passing |
+| Code scanning (CodeQL) | 5 alerts on the first scan, all one input, addressed in 0.6.1 ([6.0a](#60a-github-code-scanning-codeql-061)) |
 | On the phone | Installs and runs. Streaming playback confirmed. The Songs crash (B4-1) and exit crash (B5-1) are fixed and re-tested. Phone screens checked by screenshot (dark mode). |
+| Android Auto (Desktop Head Unit, 2026-09-29) | Listed in the app list with its icon. Opens on Now playing without autoplaying (MA-1). Home, Albums (sort folders, year-grouped grid with artwork and placeholder icons) and an album page browse correctly. A song plays from the car. Shuffle and repeat toggle. The connection log shows Android Auto and the Google app allowed. No crashes. |
+| In a car (2026-09-29) | Playback and now-playing work, and steering-wheel buttons skip tracks. The app list needed **Unknown sources** (see [6.1](#61-after-review-4-050-and-051)). |
 
 ## 8. Open items
 
 ### 8.1 Not yet verified on a device
 
 These need a phone, a car or the Desktop Head Unit. Unit tests can't cover them:
-1. **Android Auto:** Tentacle is listed; browsing, playing, steering-wheel buttons, voice ("Hey Google,
-   play … on Tentacle") and search work. Check **Settings → Android Auto connections** afterwards: it
-   should show Android Auto as allowed.
+1. **Android Auto, remaining checks:** listing, browsing, playback, shuffle/repeat and the access rule
+   are verified ([section 7](#7-verification)). Still to check in a real car: that Tentacle is listed now
+   that Unknown sources is on, voice ("Hey Google, play … on Tentacle"), search, the Queue screen, and
+   the Artists and Playlists tabs.
 2. **The S4-1 access rule** doesn't block legitimate controllers: lock screen, notification, Bluetooth and
    headset buttons, and smartwatches.
 3. **Phone features:** search, shuffle/repeat, Up next, streaming quality, resume after a restart, the
    MP3 fallback for formats the phone can't decode, and plays appearing in Jellyfin's Recently played.
 4. **Light mode** and the keyboard not covering the sign-in form.
 5. **Content loads within 10 s** on a slow connection with a large library (Android Auto rule DR-3).
+6. **Tailscale away from home:** with "When the server can't be reached" on and Tailscale off, leave home
+   Wi-Fi (or turn Wi-Fi off). Check that opening Tentacle, and connecting to the car, turn Tailscale on,
+   and that lists and playback recover.
 
 ### 8.2 Accepted risks
 
@@ -334,6 +408,7 @@ These need a phone, a car or the Desktop Head Unit. Unit tests can't cover them:
 | R-6 | Some libraries are held back: OkHttp 4.12.0, Compose BOM 2026.06.01, androidx.core < 1.19 | None has a known vulnerability. Newer versions need AGP 9 / compileSdk 37 or are major upgrades, each best done as its own change. Dependabot's open proposals (Kotlin, OkHttp 5, Gradle 9) are left for the owner to decide. |
 | R-7 | Only JVM unit tests; no automated UI or device tests | Device behaviour is covered by the checklist in [8.1](#81-not-yet-verified-on-a-device). Instrumented tests would help in the long run. |
 | R-8 | The phone UI and the playback service share one process | Normal for Android media apps; the known crash vectors are fixed. |
+| R-9 | The Tailscale app isn't verified by its signing certificate before Tentacle sends it the connect request | The request carries no data and grants nothing. An impostor under Tailscale's package name would have to be sideloaded by the user, and would learn only that Tentacle wanted to connect. |
 
 ### 8.3 Before a public or store release
 

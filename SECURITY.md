@@ -1,9 +1,9 @@
-﻿# Security policy
+# Security policy
 
 ## Reporting a vulnerability
 
 Please **don't open a public issue** for security problems. Report them privately through
-GitHub's **Security â†’ Report a vulnerability** (private security advisories) on this repository.
+GitHub's **Security → Report a vulnerability** (private security advisories) on this repository.
 
 Include what you found, how to reproduce it, and the app version. You'll get an acknowledgement
 within 7 days. Fixes are released as soon as practical, and reporters are credited unless they ask not to be.

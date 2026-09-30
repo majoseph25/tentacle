@@ -37,9 +37,15 @@ class Library(private val api: JellyfinApi, private val prefs: Prefs) {
             parentId == "home" -> home()
             parentId == "songs" -> songs(page, pageSize)
             parentId == "albums" -> albumSorts()
+            // The phone pages through every artist A–Z; the car (no paging) gets an A–Z picker when the list is long.
             parentId == "artists" -> {
-                val page0 = api.albumArtists(artistQuery(emptyMap()))
-                if (page0.total <= MAX_LIST) grouped(page0.items, ::letterOf, ::artistEntry) else letters("artists", ContentStyle.LIST)
+                val paged = pageSize != Int.MAX_VALUE
+                val result = api.albumArtists(artistQuery(range(page, pageSize)))
+                if (paged || result.total <= MAX_LIST) {
+                    grouped(result.items, ::letterOf, ::artistEntry)
+                } else {
+                    letters("artists", ContentStyle.LIST)
+                }
             }
             parentId == "playlists" -> api.items(
                 mapOf(
@@ -47,7 +53,7 @@ class Library(private val api: JellyfinApi, private val prefs: Prefs) {
                     "Fields" to "ChildCount", "Limit" to MAX_LIST.toString(),
                 ),
             ).items.map(::playlistEntry)
-            parentId.startsWith("sort:albums:") -> albumsSorted(parentId.substringAfterLast(':'))
+            parentId.startsWith("sort:albums:") -> albumsSorted(parentId.substringAfterLast(':'), page, pageSize)
             parentId.startsWith("az:albums:") ->
                 api.items(albumQuery(letterFilter(parentId.substringAfterLast(':')) + ("Limit" to MAX_LIST.toString())))
                     .items.map { albumEntry(it) }
@@ -156,7 +162,11 @@ class Library(private val api: JellyfinApi, private val prefs: Prefs) {
                 "shuffle:library:all", "Shuffle my library", "Random songs from your whole library",
                 playable = true, icon = IconKind.SHUFFLE,
             ),
-            BrowseEntry("songs", "All songs", "A–Z", browsable = true, icon = IconKind.SONG, browsableStyle = ContentStyle.LIST),
+            // Home draws its browsable rows as tiles (for the Recently added albums); keep this one a list row.
+            BrowseEntry(
+                "songs", "All songs", "A–Z", browsable = true, icon = IconKind.SONG,
+                browsableStyle = ContentStyle.LIST, itemStyle = ContentStyle.LIST,
+            ),
         ) +
             trackEntries(recent, "recent:all", showAlbum = true).map { it.copy(group = "Recently played") } +
             added.map { albumEntry(it, group = "Recently added") }
@@ -193,31 +203,45 @@ class Library(private val api: JellyfinApi, private val prefs: Prefs) {
         )
     }
 
-    private fun albumSorts() = listOf(
-        "name" to "A–Z", "artist" to "By artist", "year" to "Newest releases", "added" to "Recently added",
-    ).map { (order, title) ->
+    private fun albumSorts() = ALBUM_SORTS.map { (order, title) ->
         BrowseEntry("sort:albums:$order", title, browsable = true, icon = IconKind.SORT, browsableStyle = ContentStyle.GRID)
     }
 
-    private fun albumsSorted(order: String): List<BrowseEntry> {
-        val limit = "Limit" to MAX_LIST.toString()
+    /**
+     * Albums in one sort order. The phone pages through all of them; the car gets the first [MAX_LIST]
+     * (or, for A–Z, a letter picker when there are more).
+     */
+    private fun albumsSorted(order: String, page: Int, pageSize: Int): List<BrowseEntry> {
+        val paged = pageSize != Int.MAX_VALUE
+        val range = range(page, pageSize)
         return when (order) {
             "name" -> {
-                val page = api.items(albumQuery(mapOf(limit)))
-                if (page.total <= MAX_LIST) grouped(page.items, ::letterOf) { albumEntry(it) } else letters("albums", ContentStyle.GRID)
+                val result = api.items(albumQuery(range))
+                if (paged || result.total <= MAX_LIST) {
+                    grouped(result.items, ::letterOf) { albumEntry(it) }
+                } else {
+                    letters("albums", ContentStyle.GRID)
+                }
             }
             "artist" -> grouped(
-                api.items(albumQuery(mapOf("SortBy" to "AlbumArtist,ProductionYear,SortName", limit))).items,
+                api.items(albumQuery(mapOf("SortBy" to "AlbumArtist,ProductionYear,SortName") + range)).items,
                 { it.str("AlbumArtist").ifEmpty { "Unknown artist" } },
             ) { albumEntry(it, subtitle = it.yearText()) }
             "year" -> grouped(
-                api.items(albumQuery(mapOf("SortBy" to "ProductionYear,SortName", "SortOrder" to "Descending", limit))).items,
+                api.items(albumQuery(mapOf("SortBy" to "ProductionYear,SortName", "SortOrder" to "Descending") + range)).items,
                 { it.yearText().ifEmpty { "Unknown year" } },
             ) { albumEntry(it) }
-            "added" -> api.items(albumQuery(mapOf("SortBy" to "DateCreated", "SortOrder" to "Descending", limit)))
+            "added" -> api.items(albumQuery(mapOf("SortBy" to "DateCreated", "SortOrder" to "Descending") + range))
                 .items.map { albumEntry(it) }
             else -> emptyList()
         }
+    }
+
+    /** StartIndex/Limit for one page, or the first [MAX_LIST] items for clients that don't page. */
+    private fun range(page: Int, pageSize: Int): Map<String, String> {
+        if (pageSize == Int.MAX_VALUE) return mapOf("Limit" to MAX_LIST.toString())
+        val size = pageSize.coerceIn(1, MAX_PAGE_SIZE)
+        return mapOf("StartIndex" to pageStart(page, size).toString(), "Limit" to size.toString())
     }
 
     /** Numbered tracks with durations; multi-disc albums get a header per disc. */
@@ -370,6 +394,16 @@ class Library(private val api: JellyfinApi, private val prefs: Prefs) {
 
     companion object {
         const val ROOT = "root"
+
+        /** Album sort orders (key in "sort:albums:<key>", title): folders in the car, chips on the phone. */
+        val ALBUM_SORTS = listOf(
+            "name" to "A–Z", "artist" to "By artist", "year" to "Newest releases", "added" to "Recently added",
+        )
+
+        /** Long lists the phone app pages through (Android Auto can't page, so it gets A–Z pickers). */
+        val PAGED_LISTS = setOf(
+            "songs", "artists", "sort:albums:name", "sort:albums:artist", "sort:albums:year", "sort:albums:added",
+        )
 
         /** Android Auto has no pagination, so keep lists short enough to load quickly. */
         const val MAX_LIST = 200

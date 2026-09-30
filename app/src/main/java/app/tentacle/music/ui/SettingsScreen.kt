@@ -3,6 +3,8 @@
 
 package app.tentacle.music.ui
 
+import android.content.ActivityNotFoundException
+import android.content.Intent
 import android.text.format.DateUtils
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -13,14 +15,19 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -28,6 +35,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,11 +44,17 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import app.tentacle.music.Account
 import app.tentacle.music.ArtworkProvider
 import app.tentacle.music.BuildConfig
 import app.tentacle.music.Prefs
 import app.tentacle.music.StreamQuality
+import app.tentacle.music.Tailscale
+import app.tentacle.music.TailscaleMode
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 
 @Composable
 fun SettingsScreen(
@@ -95,6 +109,8 @@ fun SettingsScreen(
             }
         }
 
+        Section("Remote access with Tailscale") { TailscaleSettings(prefs) }
+
         Section("Storage") {
             OutlinedButton(onClick = {
                 val freed = ArtworkProvider.cacheSize(context)
@@ -129,6 +145,123 @@ fun SettingsScreen(
             modifier = Modifier.fillMaxWidth(),
         )
     }
+}
+
+/**
+ * Optional: have Tentacle ask the Tailscale app to connect, for servers that are only reachable
+ * through Tailscale away from home. See [Tailscale] for what is (and isn't) done.
+ */
+@Composable
+private fun TailscaleSettings(prefs: Prefs) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val installed = remember { Tailscale.isInstalled(context) }
+    var mode by remember { mutableStateOf(prefs.tailscaleMode) }
+    var vpnUp by remember { mutableStateOf(Tailscale.isVpnActive(context)) }
+    var status by remember { mutableStateOf<String?>(null) }
+    var busy by remember { mutableStateOf(false) }
+    val tailnetServer = remember(prefs.serverUrl) {
+        prefs.serverUrl.toHttpUrlOrNull()?.host?.let(Tailscale::isTailnetAddress) == true
+    }
+    val hint = MaterialTheme.colorScheme.onSurfaceVariant
+
+    /** After asking Tailscale to disconnect, waits (up to 5 s) for the VPN to go, then shows the result. */
+    suspend fun showDisconnected(sent: Boolean) {
+        if (sent) {
+            for (i in 0 until 10) {
+                if (!Tailscale.isVpnActive(context)) break
+                delay(500)
+            }
+        }
+        vpnUp = Tailscale.isVpnActive(context)
+        status = when {
+            !sent -> null
+            vpnUp -> "Asked Tailscale to disconnect, but a VPN is still on. Check the Tailscale app."
+            else -> "Tailscale turned off."
+        }
+    }
+
+    Text(
+        "Reach your server away from home through Tailscale. Tentacle asks the Tailscale app to connect; " +
+            "it never sees your Tailscale account or traffic.",
+        style = MaterialTheme.typography.bodySmall, color = hint,
+    )
+    Spacer(Modifier.height(4.dp))
+    if (!installed) {
+        Text("The Tailscale app isn't installed on this phone.", style = MaterialTheme.typography.bodyMedium)
+        TextButton(onClick = {
+            try {
+                context.startActivity(Intent(Intent.ACTION_VIEW, "https://play.google.com/store/apps/details?id=${Tailscale.PACKAGE}".toUri()))
+            } catch (e: ActivityNotFoundException) {
+                status = "No app store or browser found."
+            }
+        }) { Text("Get Tailscale") }
+        status?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
+        return
+    }
+    if (tailnetServer && mode == TailscaleMode.OFF) {
+        Text(
+            "Your server's address is a Tailscale address, so this is recommended.",
+            style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary,
+        )
+    }
+    val on = mode == TailscaleMode.WHEN_NEEDED
+    Row(
+        Modifier.fillMaxWidth().toggleable(value = on, role = Role.Switch, enabled = !busy) { checked ->
+            mode = if (checked) TailscaleMode.WHEN_NEEDED else TailscaleMode.OFF
+            prefs.tailscaleMode = mode
+            if (!checked) {
+                busy = true
+                scope.launch {
+                    // Switching off also turns Tailscale off, if Tentacle was the one that turned it on.
+                    showDisconnected(Tailscale.disconnect(context, prefs, onlyIfStartedByTentacle = true))
+                    busy = false
+                }
+            } else {
+                status = null
+            }
+        }.padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text("Connect when your server can't be reached")
+            Text(
+                "Tentacle checks your server first and only connects Tailscale if it doesn't answer, for example " +
+                    "away from home. It turns Tailscale off again when you close Tentacle or switch this off. " +
+                    "If you turned Tailscale on yourself, Tentacle leaves it alone.",
+                style = MaterialTheme.typography.bodySmall, color = hint,
+            )
+        }
+        Spacer(Modifier.width(12.dp))
+        Switch(checked = on, onCheckedChange = null, enabled = !busy)
+    }
+    Spacer(Modifier.height(4.dp))
+    Text("VPN: " + if (vpnUp) "connected" else "not connected", style = MaterialTheme.typography.bodyMedium)
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (vpnUp) {
+            OutlinedButton(enabled = !busy, onClick = {
+                busy = true
+                status = null
+                scope.launch {
+                    showDisconnected(Tailscale.disconnect(context, prefs, onlyIfStartedByTentacle = false))
+                    busy = false
+                }
+            }) { Text("Disconnect") }
+        } else {
+            OutlinedButton(enabled = !busy, onClick = {
+                busy = true
+                status = null
+                scope.launch {
+                    status = Tailscale.ensure(context, prefs, force = true).message
+                    vpnUp = Tailscale.isVpnActive(context)
+                    busy = false
+                }
+            }) { Text("Connect now") }
+        }
+        TextButton(onClick = { Tailscale.openApp(context) }) { Text("Open Tailscale") }
+        if (busy) CircularProgressIndicator(Modifier.size(24.dp))
+    }
+    status?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
 }
 
 @Composable
