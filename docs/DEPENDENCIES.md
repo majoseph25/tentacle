@@ -2,8 +2,8 @@
 
 Everything Tentacle is built with and everything that ships inside it, with exact versions and licences.
 
-- **Generated:** 2026-09-28, for **Tentacle 0.4.0 (build 4)**. The dependencies are unchanged in
-  0.5.0 (branding only).
+- **Generated:** 2026-09-30, for **Tentacle 0.6.2 (build 9)**: Kotlin 2.3.21 and kotlinx-coroutines
+  1.11.0. Nothing else changed since 0.4.0.
 - **Source of every version:** the resolved Gradle dependency graph, not the requested versions.
 - **Source of every licence:** the artifact's published POM.
 - **Regenerating:** see [the end of this page](#regenerating-this-page).
@@ -15,7 +15,7 @@ Everything Tentacle is built with and everything that ships inside it, with exac
 | Libraries in the release APK | **130** artifacts (12 declared directly, the rest transitive) | 129 Apache-2.0, 1 MIT |
 | Test-only libraries | 2 | EPL-1.0, BSD-3-Clause |
 | Gradle plugins | 3 (+ their build-time dependencies) | Apache-2.0 |
-| Known vulnerabilities | **0** ([OSV](https://osv.dev), checked 2026-09-28) | |
+| Known vulnerabilities | **0** ([OSV](https://osv.dev), checked 2026-09-30) | |
 
 All licences are permissive and compatible with any licence you choose for Tentacle itself. Apache-2.0
 asks you to keep the notices; see [Licence obligations](#licence-obligations).
@@ -28,8 +28,8 @@ asks you to keep the notices; see [Licence obligations](#licence-obligations).
 |---|---|---|---|
 | Gradle | **8.14.5** | `gradle/wrapper/gradle-wrapper.properties` | The wrapper verifies the distribution's SHA-256 (`distributionSha256Sum`) before running it. |
 | Android Gradle Plugin (AGP) | **8.13.2** | `build.gradle.kts` | Last 8.x release. AGP 9 changes the build DSL and needs its own migration. |
-| Kotlin (compiler and Gradle plugin) | **2.2.21** | `build.gradle.kts` | Kotlin Android plugin `org.jetbrains.kotlin.android`. |
-| Compose compiler | **2.2.21** | `build.gradle.kts` | Plugin `org.jetbrains.kotlin.plugin.compose`, versioned with Kotlin. |
+| Kotlin (compiler and Gradle plugin) | **2.3.21** | `build.gradle.kts` | Kotlin Android plugin `org.jetbrains.kotlin.android`. |
+| Compose compiler | **2.3.21** | `build.gradle.kts` | Plugin `org.jetbrains.kotlin.plugin.compose`, versioned with Kotlin. |
 | JDK used to build | **JetBrains Runtime 21.0.11** | Android Studio → Gradle JDK, or `JAVA_HOME` | Any JDK 17 or 21 works. Android Studio's bundled JDK 25 is too new for Gradle 8.14. |
 | Java/Kotlin bytecode target | **17** | `app/build.gradle.kts` (`compileOptions`, `jvmTarget`) | |
 | Gradle's embedded Kotlin (build scripts only) | 2.0.21 | Bundled with Gradle | Not used for app code. |
@@ -51,8 +51,8 @@ asks you to keep the notices; see [Licence obligations](#licence-obligations).
 | Plugin ID | Version | Purpose |
 |---|---|---|
 | `com.android.application` | 8.13.2 | Builds the Android app (manifest merging, resources, R8, signing, lint). |
-| `org.jetbrains.kotlin.android` | 2.2.21 | Compiles Kotlin for Android. |
-| `org.jetbrains.kotlin.plugin.compose` | 2.2.21 | The Compose compiler (turns `@Composable` functions into UI code). |
+| `org.jetbrains.kotlin.android` | 2.3.21 | Compiles Kotlin for Android. |
+| `org.jetbrains.kotlin.plugin.compose` | 2.3.21 | The Compose compiler (turns `@Composable` functions into UI code). |
 
 These run only at build time. Their full dependency tree (about 430 lines, including AGP's internals such
 as R8, lint, bundletool and protobuf) is in
@@ -65,11 +65,11 @@ These are the 12 libraries Tentacle asks for directly. Everything else in sectio
 
 | Library | Version | Purpose in Tentacle |
 |---|---|---|
-| `org.jetbrains.kotlin:kotlin-stdlib` | 2.2.21 | Kotlin standard library (added by the Kotlin plugin). |
+| `org.jetbrains.kotlin:kotlin-stdlib` | 2.3.21 | Kotlin standard library (added by the Kotlin plugin). |
 | `androidx.core:core-ktx` | 1.17.0 | Android compatibility helpers: `SharedPreferences.edit {}`, `NotificationManagerCompat`, `ContextCompat`, window insets. |
 | `com.squareup.okhttp3:okhttp` | 4.12.0 | HTTP client for all server calls and audio streaming. Redirects are disabled; an interceptor adds the token only for the signed-in server. |
-| `org.jetbrains.kotlinx:kotlinx-coroutines-android` | 1.10.2 | Background work (network, disk) off the main thread. |
-| `org.jetbrains.kotlinx:kotlinx-coroutines-guava` | 1.10.2 | Bridges coroutines and Guava `ListenableFuture`, which Media3's session API uses. |
+| `org.jetbrains.kotlinx:kotlinx-coroutines-android` | 1.11.0 | Background work (network, disk) off the main thread. |
+| `org.jetbrains.kotlinx:kotlinx-coroutines-guava` | 1.11.0 | Bridges coroutines and Guava `ListenableFuture`, which Media3's session API uses. |
 | `androidx.media3:media3-exoplayer` | 1.11.1 | The audio player (ExoPlayer): streaming, buffering, gapless playback, audio focus. |
 | `androidx.media3:media3-datasource-okhttp` | 1.11.1 | Lets ExoPlayer stream through Tentacle's OkHttp client (and its auth rules). |
 | `androidx.media3:media3-session` | 1.11.1 | `MediaLibraryService`/`MediaSession`: Android Auto, lock screen, notification, Bluetooth, the phone app's controller. |
@@ -222,15 +222,15 @@ intentionally empty placeholder that stops a duplicate of a class Guava already 
 | Group | Artifact | Version | Licence |
 |---|---|---|---|
 | `org.jetbrains` | `annotations` | 23.0.0 | Apache-2.0 |
-| `org.jetbrains.kotlin` | `kotlin-stdlib` | 2.2.21 | Apache-2.0 |
-| `org.jetbrains.kotlin` | `kotlin-stdlib-common` | 2.2.21 | Apache-2.0 |
+| `org.jetbrains.kotlin` | `kotlin-stdlib` | 2.3.21 | Apache-2.0 |
+| `org.jetbrains.kotlin` | `kotlin-stdlib-common` | 2.3.21 | Apache-2.0 |
 | `org.jetbrains.kotlin` | `kotlin-stdlib-jdk7` | 1.9.10 | Apache-2.0 |
 | `org.jetbrains.kotlin` | `kotlin-stdlib-jdk8` | 1.9.10 | Apache-2.0 |
-| `org.jetbrains.kotlinx` | `kotlinx-coroutines-android` | 1.10.2 | Apache-2.0 |
-| `org.jetbrains.kotlinx` | `kotlinx-coroutines-bom` | 1.10.2 | Apache-2.0 |
-| `org.jetbrains.kotlinx` | `kotlinx-coroutines-core` | 1.10.2 | Apache-2.0 |
-| `org.jetbrains.kotlinx` | `kotlinx-coroutines-core-jvm` | 1.10.2 | Apache-2.0 |
-| `org.jetbrains.kotlinx` | `kotlinx-coroutines-guava` | 1.10.2 | Apache-2.0 |
+| `org.jetbrains.kotlinx` | `kotlinx-coroutines-android` | 1.11.0 | Apache-2.0 |
+| `org.jetbrains.kotlinx` | `kotlinx-coroutines-bom` | 1.11.0 | Apache-2.0 |
+| `org.jetbrains.kotlinx` | `kotlinx-coroutines-core` | 1.11.0 | Apache-2.0 |
+| `org.jetbrains.kotlinx` | `kotlinx-coroutines-core-jvm` | 1.11.0 | Apache-2.0 |
+| `org.jetbrains.kotlinx` | `kotlinx-coroutines-guava` | 1.11.0 | Apache-2.0 |
 | `org.jetbrains.kotlinx` | `kotlinx-serialization-bom` | 1.7.3 | Apache-2.0 |
 | `org.jetbrains.kotlinx` | `kotlinx-serialization-core` | 1.7.3 | Apache-2.0 |
 | `org.jetbrains.kotlinx` | `kotlinx-serialization-core-jvm` | 1.7.3 | Apache-2.0 |

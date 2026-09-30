@@ -32,7 +32,10 @@ class ArtworkProvider : ContentProvider() {
         if (mode != "r") throw FileNotFoundException("read-only")
         // The id comes from the requesting app. Only a Jellyfin GUID is accepted, rebuilt from its numeric
         // value, so none of the caller's text reaches the cache file name or the server URL.
-        val id = uri.lastPathSegment?.let(::canonicalItemId) ?: throw FileNotFoundException("bad id")
+        // Called directly, not via `?.let(::canonicalItemId)`: code scanning treats `let` as passing its
+        // input straight through and wouldn't see the rebuild.
+        val raw = uri.lastPathSegment ?: throw FileNotFoundException("bad id")
+        val id = canonicalItemId(raw) ?: throw FileNotFoundException("bad id")
 
         val dir = cacheDir(ctx).apply { mkdirs() }
         val file = File(dir, "$id.jpg")

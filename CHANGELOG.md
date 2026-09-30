@@ -2,6 +2,22 @@
 
 All notable changes to Tentacle. Versions follow `versionName` / `versionCode` in `app/build.gradle.kts`.
 
+## 0.6.2 (build 9) — 2026-09-30
+
+### Dependencies
+- **Kotlin 2.3.21 and kotlinx-coroutines 1.11.0.**
+  - **Why not Kotlin 2.4.20:** Dependabot proposed Kotlin 2.4.20 with the coroutines update. The build
+    passed, but R8 (the release build's shrinker, bundled with AGP 8.13) can't read Kotlin 2.4's
+    metadata; Kotlin 2.4 needs R8 9.1.29, which only comes with AGP 9. Kotlin 2.3.21 is the newest
+    release that supports AGP 8.13, and the release build is clean with it.
+  - **Dependabot** now skips Kotlin 2.4 until the move to AGP 9.
+  - **No known vulnerabilities:** all 130 shipped libraries were re-checked against OSV.
+
+### Security
+- **Code scanning alerts #1–#5, second attempt.** 0.6.1's fix was right, but CodeQL couldn't see it:
+  the ID check was called through Kotlin's `let`, which CodeQL treats as passing the original text
+  straight through. The check is now called directly.
+
 ## 0.6.1 (build 8) — 2026-09-29
 
 ### Changed

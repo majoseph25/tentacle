@@ -20,6 +20,12 @@ updates:
         versions: [">=1.19.0"]
       - dependency-name: "androidx.core:core-ktx"
         versions: [">=1.19.0"]
+      # Kotlin 2.4 needs R8 9.1.29+, which only AGP 9 bundles; AGP 8.13's R8 can't read its metadata
+      # (https://developer.android.com/build/kotlin-support). Stay on 2.3.x until AGP 9.
+      - dependency-name: "org.jetbrains.kotlin.android"
+        versions: [">=2.4.0"]
+      - dependency-name: "org.jetbrains.kotlin.plugin.compose"
+        versions: [">=2.4.0"]
       # AGP 9 is a major migration (new DSL); do it deliberately, not via a bot PR.
       - dependency-name: "com.android.application"
         update-types: ["version-update:semver-major"]
