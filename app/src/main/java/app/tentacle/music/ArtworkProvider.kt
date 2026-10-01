@@ -40,7 +40,10 @@ class ArtworkProvider : ContentProvider() {
         val dir = cacheDir(ctx).apply { mkdirs() }
         val file = File(dir, "$id.jpg")
         if (!file.exists()) {
-            if ((dir.list()?.size ?: 0) > MAX_CACHED) dir.listFiles()?.forEach { it.delete() }
+            // Bounded by count and by total size: each image can be up to 5 MB, so a count alone could let
+            // a misbehaving server fill ~1.5 GB of storage.
+            val cached = dir.listFiles().orEmpty()
+            if (cached.size > MAX_CACHED || cached.sumOf { it.length() } > MAX_CACHE_BYTES) cached.forEach { it.delete() }
             // Unique temp file, so two simultaneous requests for the same image can't corrupt each other.
             var tmp: File? = null
             try {
@@ -70,6 +73,7 @@ class ArtworkProvider : ContentProvider() {
 
     companion object {
         private const val MAX_CACHED = 300
+        private const val MAX_CACHE_BYTES = 64L * 1024 * 1024
 
         private fun cacheDir(context: Context) = File(context.cacheDir, "art")
 

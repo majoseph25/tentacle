@@ -101,8 +101,11 @@ class Library(private val api: JellyfinApi, private val prefs: Prefs) {
 
     /** Voice ("play <query>"): plays the best match. */
     fun searchPlay(query: String): Tracks? {
+        // Same cap as the search bar: the query comes from another app (Assistant, the car).
+        val term = query.trim().take(MAX_QUERY_LENGTH)
+        if (term.isEmpty()) return null
         val hit = api.items(
-            mapOf("SearchTerm" to query, "IncludeItemTypes" to "MusicAlbum,MusicArtist,Playlist,Audio", "Limit" to "5"),
+            mapOf("SearchTerm" to term, "IncludeItemTypes" to "MusicAlbum,MusicArtist,Playlist,Audio", "Limit" to "5"),
         ).items.firstOrNull() ?: return null
         val id = requireSafeId(hit.str("Id"))
         return when (hit.str("Type")) {

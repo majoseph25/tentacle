@@ -2,11 +2,11 @@
 
 | | |
 |---|---|
-| **App** | Tentacle 0.6.2 (build 9), Android |
-| **Reviews** | Four full reviews (2026-09-27 to 2026-09-28), plus assessments of every later change |
-| **Last updated** | 2026-09-29 |
+| **App** | Tentacle 0.6.3 (build 10), Android |
+| **Reviews** | Five full reviews (2026-09-27 to 2026-10-01), plus assessments of every change in between, and GitHub code scanning |
+| **Last updated** | 2026-10-01 |
 | **Performed by** | Claude (Anthropic's AI model), working in [Claude Code](https://claude.com/claude-code) for the project owner, Mark Joseph |
-| **Current status** | 0 open findings · 33 / 33 tests pass · 0 known vulnerabilities in 130 shipped libraries |
+| **Current status** | 0 open findings · 0 open code scanning alerts · 34 / 34 tests pass · 0 known vulnerabilities in 130 shipped libraries |
 
 > **Please read this first.** These reviews were carried out by an AI assistant: code review, static
 > analysis, dependency scanning, build inspection and testing on one phone. They are **not** a professional
@@ -52,6 +52,8 @@ plays. The main protections:
 | 4 | 2026-09-28 | 0.4.0 | Standalone player rewrite (Media3), Songs, search | 4 | 3 | 0 |
 | — | 2026-09-29 | 0.5.0–0.5.1 | Changes after review 4, GitHub setup, Android Auto testing | 0 | 2 | 0 |
 | — | 2026-09-29 | 0.6.0–0.6.1 | Optional Tailscale connect, then connect only when needed and turn off again | 0 (1 accepted risk) | 3 | 0 |
+| — | 2026-09-30 | 0.6.1–0.6.2 | GitHub code scanning (CodeQL): 5 alerts, one input, none exploitable | 5 (hardening) | 0 | 0 |
+| 5 | 2026-10-01 | 0.6.3 | Full audit of the whole app, build and CI | 6 (1 medium, 3 low, 2 info) | 2 | 0 |
 
 Version 0.3.0 replaced the original remote-control design, so several early findings are now **obsolete**:
 the code they concerned no longer exists. They're marked as such in [section 6](#6-findings).
@@ -240,6 +242,44 @@ Added in 0.6.0 for servers that are reachable only through Tailscale away from h
 Severity is the impact on a user of the app. Every finding below is **resolved**. "Obsolete" means the
 affected code was removed when the app became a standalone player in 0.3.0.
 
+### 6.0 Review 5 (0.6.3): full audit
+
+**Scope:**
+- every source file,
+- the manifest, network security config and backup rules,
+- the build and R8 configuration, the CI workflow and Dependabot,
+- the dependency list (OSV, 2026-10-01: 0 of 130 vulnerable).
+
+**Focus:**
+- what another app can make Tentacle do (the exported service and artwork provider),
+- what the server can make it do,
+- the Tailscale code,
+- the CI supply chain.
+
+No high-severity issues were found.
+
+| ID | Severity | Finding | Resolution |
+|---|---|---|---|
+| A5-1 | **Medium** | **Unbounded "add to queue".** `onAddMediaItems` accepted 500 entries, each of which could expand into a whole album, artist or playlist (up to 150 songs). One request from a trusted caller (any app with notification access counts, see R-3) could build a queue of tens of thousands of songs and make hundreds of server requests | The total added is capped at 500 songs, and resolving stops once the cap is reached. It also waits for a Tailscale connection under way, like the other queue requests |
+| A5-2 | Low (bug) | **Recovery could start playback.** After a network error (Tailscale retry) or an unsupported format (MP3 fallback), recovery called `play()`, so a paused player could start playing by itself (Android Auto rule MA-1) | Recovery only re-prepares; the player keeps its play/pause state |
+| A5-3 | Low | **Voice queries uncapped.** "Play X" queries (`searchPlay`, from Assistant or the car) weren't length-capped, unlike the search bar | Trimmed and capped at 100 characters; empty queries are ignored |
+| A5-4 | Low | **Artwork cache bounded by count only.** The cache allowed 300 files, but each may be up to 5 MB, so a misbehaving server could fill about 1.5 GB of storage | Cleared when it exceeds 300 files **or** 64 MB |
+| A5-5 | Low (bug) | **Connect now could be ignored.** Tapping it while an automatic Tailscale check was running returned that check's result (for example "server reachable") instead of connecting | An explicit request waits for the automatic check, then makes its own attempt. Disconnecting stops both |
+| A5-6 | Low (CI) | **CI token left on disk.** `actions/checkout` left the job's token in `.git/config`, readable by every later step, including the Gradle build and its third-party plugins. The token can only read code | `persist-credentials: false` |
+| A5-7 | Info | **Unverified package name accepted.** `ClientAccess.check` had an unused optional package-name parameter that would have been trusted without checking it belongs to the calling app. A trap for future changes | Removed: decisions are made only from the system-verified UID |
+| A5-8 | Info | **Server text shown unbounded.** A server's redirect `Location` header was shown verbatim in the sign-in error: any length, and control or bidirectional-override characters | Only printable ASCII is shown, at most 120 characters (`shownLocation`, unit-tested) |
+
+**Reviewed and found sound:**
+- **Access control:** UID-based, with untrusted apps refused at connection. The legacy controller gets transport controls only.
+- **Network rules:** tokens only to the signed-in server, never in URLs, and no redirects followed.
+- **Inputs:** strict ID handling (canonical GUIDs for artwork), bounded image decoding, and overflow-safe paging.
+- **Tailscale:** requests carry no data; Tentacle only disconnects what it connected.
+- **Build and CI:** a release build that isn't debuggable and is shrunk with R8 at a compatible Kotlin version (2.3.21), with no diagnostic logging; the Gradle wrapper is pinned by checksum, and the CI actions are pinned by SHA and read-only.
+
+**Recommendations, not done:**
+- **Gradle dependency verification** (`verification-metadata.xml`, which checks every downloaded library's checksum) would harden the build against a compromised repository. It needs regenerating on every dependency update.
+- **Instrumented UI tests** would cover what unit tests can't (R-7).
+
 ### 6.0a GitHub code scanning (CodeQL, 0.6.1)
 
 CodeQL's first scan of the public repository reported five alerts. All five trace one input: the item ID
@@ -255,10 +295,10 @@ The underlying check was already in place, so these are hardening fixes rather t
 closed. Unit tests cover the new check (`canonicalItemIdAcceptsJellyfinGuids`,
 `canonicalItemIdRejectsEverythingElse`). **Follow-up (0.6.2):** the 0.6.1 version called the check as `uri.lastPathSegment?.let(::canonicalItemId)`.
 CodeQL models Kotlin's `let` as passing its input straight through, so its re-scan of `main` still
-reported all five alerts. 0.6.2 calls `canonicalItemId` directly. The alerts should close once CodeQL
-scans `main` with that change.
+reported all five alerts. 0.6.2 calls `canonicalItemId` directly. CodeQL's scan of `main` on 2026-09-30 found 0 results, and
+all five alerts are marked **fixed**.
 
-### 6.0 Tailscale feature (0.6.0 and 0.6.1)
+### 6.0b Tailscale feature (0.6.0 and 0.6.1)
 
 The new code (`Tailscale.kt`, and its use in the player service, Settings and sign-in) was reviewed
 before release against the threat model in [section 3](#3-threat-model).
@@ -364,17 +404,17 @@ impact, apart from the controls listed in [5.7](#57-repository-and-supply-chain)
 
 ## 7. Verification
 
-Latest results (0.6.1):
+Latest results (0.6.3):
 
 | Check | Result |
 |---|---|
-| Unit tests | **33 / 33** pass in debug and release: ID validation, LAN detection, stream URLs without credentials, token only to the signed-in server, paging limits and overflow, artwork decode bounds, sign-in checks, Tailscale address detection and connect decisions, GUID rebuilding for artwork IDs |
+| Unit tests | **34 / 34** pass in debug and release: ID validation, LAN detection, stream URLs without credentials, token only to the signed-in server, paging limits and overflow, artwork decode bounds, sign-in checks, Tailscale address detection and connect decisions, GUID rebuilding for artwork IDs, redirect message cleaning |
 | Android lint | 0 errors in debug and release. Remaining warnings are only newer library versions and translatable-string notes. |
-| Dependencies | **0 known vulnerabilities** in 130 shipped libraries (OSV, 2026-09-30, after the Kotlin and coroutines update). Details in [DEPENDENCIES.md](DEPENDENCIES.md). |
+| Dependencies | **0 known vulnerabilities** in 130 shipped libraries (OSV, 2026-10-01). Details in [DEPENDENCIES.md](DEPENDENCIES.md). |
 | Release APK | Not debuggable. No backup. Explicit network security config. targetSdk 36. Diagnostic code absent. Exported components as in [section 4](#4-attack-surface). |
 | Repository | No secrets or personal data: scanned before the first push, and the full git history again before going public |
 | CI on GitHub | Passing |
-| Code scanning (CodeQL) | 5 alerts on the first scan, all one input, addressed in 0.6.1 ([6.0a](#60a-github-code-scanning-codeql-061)) |
+| Code scanning (CodeQL) | 0 open alerts. The first scan's 5 alerts (all one input) were fixed in 0.6.2 ([6.0a](#60a-github-code-scanning-codeql-061)) |
 | On the phone | Installs and runs. Streaming playback confirmed. The Songs crash (B4-1) and exit crash (B5-1) are fixed and re-tested. Phone screens checked by screenshot (dark mode). |
 | Android Auto (Desktop Head Unit, 2026-09-29) | Listed in the app list with its icon. Opens on Now playing without autoplaying (MA-1). Home, Albums (sort folders, year-grouped grid with artwork and placeholder icons) and an album page browse correctly. A song plays from the car. Shuffle and repeat toggle. The connection log shows Android Auto and the Google app allowed. No crashes. |
 | In a car (2026-09-29) | Playback and now-playing work, and steering-wheel buttons skip tracks. The app list needed **Unknown sources** (see [6.1](#61-after-review-4-050-and-051)). |

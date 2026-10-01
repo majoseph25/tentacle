@@ -69,6 +69,10 @@ object Tailscale {
 
     private val lock = Any()
     private var inFlight: Deferred<Outcome>? = null
+    private var inFlightForced = false
+
+    /** An automatic attempt a forced one is waiting behind; stopped together with it by [disconnect]. */
+    private var superseded: Deferred<Outcome>? = null
     @Volatile private var lastFailureMs = 0L
 
     private val _connections = MutableStateFlow(0)
@@ -99,7 +103,9 @@ object Tailscale {
 
     /**
      * Makes sure the server can be reached, connecting Tailscale first if the settings call for it.
-     * Concurrent callers (the phone app, Android Auto, the player) share one attempt.
+     * Concurrent callers (the phone app, Android Auto, the player) share one attempt. An explicit request
+     * isn't answered with an automatic attempt's result ("server reachable"): it waits for that attempt,
+     * then makes its own.
      *
      * @param force the user asked explicitly ("Connect now"): skip the setting, the reachability check
      *   and the wait after a failure.
@@ -107,9 +113,17 @@ object Tailscale {
      */
     fun ensureAsync(context: Context, prefs: Prefs, force: Boolean = false, serverUrl: String = prefs.serverUrl): Deferred<Outcome> =
         synchronized(lock) {
-            inFlight?.takeIf { it.isActive }?.let { return it }
+            val running = inFlight?.takeIf { it.isActive }
+            if (running != null && (!force || inFlightForced)) return running
             val app = context.applicationContext
-            AppScope.async { attempt(app, prefs, force, serverUrl) }.also { inFlight = it }
+            superseded = running
+            AppScope.async {
+                running?.join()
+                attempt(app, prefs, force, serverUrl)
+            }.also {
+                inFlight = it
+                inFlightForced = force
+            }
         }
 
     /**
@@ -118,7 +132,11 @@ object Tailscale {
      * Returns true if the request was sent.
      */
     fun disconnect(context: Context, prefs: Prefs, onlyIfStartedByTentacle: Boolean): Boolean {
-        synchronized(lock) { inFlight?.cancel() }
+        synchronized(lock) {
+            inFlight?.cancel()
+            superseded?.cancel()
+            superseded = null
+        }
         if (onlyIfStartedByTentacle && !prefs.tailscaleStartedByTentacle) return false
         prefs.tailscaleStartedByTentacle = false
         if (!isInstalled(context)) return false
