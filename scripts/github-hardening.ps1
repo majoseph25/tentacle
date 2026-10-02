@@ -36,6 +36,16 @@ Invoke-Setting 'Private vulnerability reporting' @('-X', 'PUT', "repos/$Repo/pri
 Invoke-Setting 'Secret scanning + push protection' @('-X', 'PATCH', "repos/$Repo", '--input', $tmp)
 Invoke-Setting 'Code scanning (CodeQL)' @('-X', 'PATCH', "repos/$Repo/code-scanning/default-setup", '-f', 'state=configured')
 
+# GitHub Actions: only GitHub's own actions (checkout, setup-java, upload-artifact, CodeQL, Dependabot)
+# and Gradle's may run, so a malicious third-party action can't be slipped into a workflow. Workflows from
+# outside contributors' pull requests wait for approval every time, not just the first time.
+'{"enabled":true,"allowed_actions":"selected"}' | Set-Content $tmp -Encoding ascii
+Invoke-Setting 'Actions: selected actions only' @('-X', 'PUT', "repos/$Repo/actions/permissions", '--input', $tmp)
+'{"github_owned_allowed":true,"verified_allowed":false,"patterns_allowed":["gradle/*"]}' | Set-Content $tmp -Encoding ascii
+Invoke-Setting 'Actions: GitHub-owned + gradle/*' @('-X', 'PUT', "repos/$Repo/actions/permissions/selected-actions", '--input', $tmp)
+'{"approval_policy":"all_external_contributors"}' | Set-Content $tmp -Encoding ascii
+Invoke-Setting 'Fork PR workflows need approval' @('-X', 'PUT', "repos/$Repo/actions/permissions/fork-pr-contributor-approval", '--input', $tmp)
+
 # 2. Branch protection for main (a ruleset): no deleting or force-pushing main; changes arrive by pull
 #    request and must pass the Android CI "build" check. Repository admins (the owner) can bypass, so
 #    the owner is never locked out of their own repository.

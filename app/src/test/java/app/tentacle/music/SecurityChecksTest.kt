@@ -52,6 +52,25 @@ class SecurityChecksTest {
         ).forEach { assertEquals(it, null, canonicalItemId(it)) }
     }
 
+    // ---- JSON nesting (a deeply nested reply would overflow org.json's recursive parser) ----
+
+    @Test
+    fun jsonDepthCountsNestingOutsideStrings() {
+        assertEquals(0, JellyfinApi.jsonDepth(""))
+        assertEquals(1, JellyfinApi.jsonDepth("""{"Items":"[[[[[[[["}"""))
+        assertEquals(3, JellyfinApi.jsonDepth("""{"Items":[{"Name":"a"}],"TotalRecordCount":1}"""))
+        assertEquals(1, JellyfinApi.jsonDepth("""{"a":"quote \" then [[[ and \\"}"""))
+        // An even run of backslashes doesn't escape the closing quote, so the "[" after it counts.
+        assertEquals(2, JellyfinApi.jsonDepth("""{"a":"\\\\","b":[1]}"""))
+    }
+
+    @Test
+    fun hostileNestingIsMeasuredWithoutRecursion() {
+        // 100,000 levels: far past the 64 allowed, and deep enough to overflow a recursive parser.
+        val bomb = "[".repeat(100_000) + "]".repeat(100_000)
+        assertEquals(100_000, JellyfinApi.jsonDepth(bomb))
+    }
+
     // ---- redirect message (server text shown to the user) ----
 
     @Test
