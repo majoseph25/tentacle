@@ -1,9 +1,12 @@
 # Dependencies
 
-Everything Tentacle is built with and everything that ships inside it, with exact versions and licences.
+Everything Tentacle is built with, everything that ships inside it, and the tools that check it, with
+exact versions and licences.
 
-- **Generated:** 2026-09-30, for **Tentacle 0.6.2 (build 9)**: Kotlin 2.3.21 and kotlinx-coroutines
-  1.11.0. Nothing else changed since 0.4.0.
+- **Generated:** 2026-10-02, for **Tentacle 0.7.0 (build 12)**. The libraries last changed in 0.6.2
+  (Kotlin 2.3.21, kotlinx-coroutines 1.11.0); 0.6.3 to 0.7.0 changed only Tentacle's own code.
+- **Verified:** every artifact, version and licence below was checked against the resolved graph and each
+  artifact's POM, and the merged manifest against the release APK.
 - **Source of every version:** the resolved Gradle dependency graph, not the requested versions.
 - **Source of every licence:** the artifact's published POM.
 - **Regenerating:** see [the end of this page](#regenerating-this-page).
@@ -15,7 +18,9 @@ Everything Tentacle is built with and everything that ships inside it, with exac
 | Libraries in the release APK | **130** artifacts (12 declared directly, the rest transitive) | 129 Apache-2.0, 1 MIT |
 | Test-only libraries | 2 | EPL-1.0, BSD-3-Clause |
 | Gradle plugins | 3 (+ their build-time dependencies) | Apache-2.0 |
-| Known vulnerabilities | **0** ([OSV](https://osv.dev), checked 2026-09-30) | |
+| Known vulnerabilities | **0** ([OSV](https://osv.dev), checked 2026-10-02) | |
+| CI actions | 5 steps from 4 actions, each pinned to a commit SHA | MIT |
+| Held back on purpose | 7 components, each with a newer release (see [section 9](#9-held-back-versions)) | |
 
 All licences are permissive and compatible with any licence you choose for Tentacle itself. Apache-2.0
 asks you to keep the notices; see [Licence obligations](#licence-obligations).
@@ -27,10 +32,10 @@ asks you to keep the notices; see [Licence obligations](#licence-obligations).
 | Component | Version | Where it's set | Notes |
 |---|---|---|---|
 | Gradle | **8.14.5** | `gradle/wrapper/gradle-wrapper.properties` | The wrapper verifies the distribution's SHA-256 (`distributionSha256Sum`) before running it. |
-| Android Gradle Plugin (AGP) | **8.13.2** | `build.gradle.kts` | Last 8.x release. AGP 9 changes the build DSL and needs its own migration. |
-| Kotlin (compiler and Gradle plugin) | **2.3.21** | `build.gradle.kts` | Kotlin Android plugin `org.jetbrains.kotlin.android`. |
+| Android Gradle Plugin (AGP) | **8.13.2** | `build.gradle.kts` | Last 8.x release. AGP 9 changes the build DSL and needs its own migration ([section 9](#9-held-back-versions)). |
+| Kotlin (compiler and Gradle plugin) | **2.3.21** | `build.gradle.kts` | Kotlin Android plugin `org.jetbrains.kotlin.android`. The newest Kotlin AGP 8.13's R8 supports: Kotlin 2.4 needs R8 9.1.29+, which only AGP 9 bundles. |
 | Compose compiler | **2.3.21** | `build.gradle.kts` | Plugin `org.jetbrains.kotlin.plugin.compose`, versioned with Kotlin. |
-| JDK used to build | **JetBrains Runtime 21.0.11** | Android Studio → Gradle JDK, or `JAVA_HOME` | Any JDK 17 or 21 works. Android Studio's bundled JDK 25 is too new for Gradle 8.14. |
+| JDK used to build | **JetBrains Runtime 21.0.11** (local), **Temurin 21** (CI) | Android Studio → Gradle JDK, or `JAVA_HOME`; CI: `actions/setup-java` | Any JDK 17 or 21 works. Android Studio's bundled JDK 25 is too new for Gradle 8.14. |
 | Java/Kotlin bytecode target | **17** | `app/build.gradle.kts` (`compileOptions`, `jvmTarget`) | |
 | Gradle's embedded Kotlin (build scripts only) | 2.0.21 | Bundled with Gradle | Not used for app code. |
 
@@ -41,8 +46,8 @@ asks you to keep the notices; see [Licence obligations](#licence-obligations).
 | `compileSdk` | **36** (Android 16) | Media3 1.10+ requires at least 36. |
 | `targetSdk` | **36** (Android 16) | Google Play has required 36 for new apps and updates since 2026-08-31. |
 | `minSdk` | **26** (Android 8.0) | |
-| SDK Build-Tools | **35.0.0** | AGP 8.13.2's default. |
-| SDK Platform | android-36 | android-34 and android-37 are also installed but unused. |
+| SDK Build-Tools | **35.0.0** | AGP 8.13.2's default (34.0.0 and 36.0.0 are also installed but unused). |
+| SDK Platform | android-36 | android-34 and android-37.0 are also installed but unused. |
 | Platform-Tools (adb) | 37.0.1 | For installing and debugging only. |
 | Android Auto Desktop Head Unit | 2.0 | For testing Android Auto without a car. Optional. |
 
@@ -270,26 +275,76 @@ Libraries can add their own components to the merged manifest. These end up in t
 | `androidx.media3.session.BluetoothValidationActivity` | media3-session | yes | Requires `android.permission.BLUETOOTH_PRIVILEGED`, so only the system Bluetooth stack can start it. |
 | `androidx.startup.InitializationProvider` | androidx.startup | no | Runs library initializers at app start (emoji, lifecycle, profile installer). |
 | `androidx.profileinstaller.ProfileInstallReceiver` | androidx.profileinstaller | yes | Requires `android.permission.DUMP` (system and adb only). Installs baseline performance profiles. |
-| Permission `ACCESS_NETWORK_STATE` | Media3 | | Lets the player react to connectivity changes. |
+| Permission `ACCESS_NETWORK_STATE` | Media3, and Tentacle itself since 0.6.0 | | Media3: react to connectivity changes. Tentacle: see whether a VPN is up for the optional Tailscale feature. Install-time; network state only. |
 | Permission `app.tentacle.music.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION` | androidx.core | | Internal, signature-level. Keeps runtime-registered receivers private to the app. |
 
 Tentacle's own components (the launcher activity, `PlaybackService`, `ArtworkProvider`) are described in
-[ARCHITECTURE.md](ARCHITECTURE.md#components).
+[ARCHITECTURE.md](ARCHITECTURE.md#components). Tentacle's own manifest also declares:
+
+| Declaration | Values | Why |
+|---|---|---|
+| Permissions | `INTERNET`, `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_MEDIA_PLAYBACK`, `WAKE_LOCK`, `ACCESS_NETWORK_STATE` | Streaming, background playback, staying awake while streaming, VPN detection (Tailscale) |
+| Package visibility (`<queries>`) | `com.google.android.projection.gearhead`, `com.google.android.googlequicksearchbox`, `com.google.android.carassistant`, `com.google.android.gms`, `com.tailscale.ipn` | Recognising Android Auto, Assistant and Google-signed callers (`ClientAccess`), and detecting the Tailscale app |
 
 ## 7. Other building blocks
 
 - **Jellyfin server API.** Tentacle speaks the Jellyfin REST API directly (no Jellyfin SDK library). It
   was tested against Jellyfin Server 10.11.11. The endpoints used are listed in
   [ARCHITECTURE.md](ARCHITECTURE.md#jellyfin-api-endpoints).
+- **Tailscale (optional, 0.6.0+).** Not a library: Tentacle sends the installed Tailscale app its public
+  automation broadcasts (`com.tailscale.ipn.CONNECT_VPN` / `DISCONNECT_VPN`, to `IPNReceiver`) and
+  nothing else. It was tested with Tailscale 1.102.4 for Android. See
+  [ARCHITECTURE.md](ARCHITECTURE.md#tailscale-optional).
 - **Icons.**
   - The Tentacle logo was created for the project owner with ChatGPT. The source files are in
     [`branding/`](../branding/).
   - The launcher icons (adaptive, round and themed), the in-app logos and the 512 px Play Store icon are
-    all generated from the logo.
+    all generated from the logo. Since 0.6.4, the launcher and Play Store icons are on black.
   - All other icons are [Material Design icons](https://fonts.google.com/icons) (Apache-2.0), stored as
     vector drawables in `app/src/main/res/drawable/`.
   - The shuffle and repeat buttons in Android Auto and the notification use Media3's built-in icons.
 - **No other services.** No analytics, crash reporting, ads, Firebase or Google Play Services libraries.
+
+## 8. CI and repository tooling
+
+These check every change; none of it ships in the app.
+
+| Tool | Version | Role |
+|---|---|---|
+| GitHub Actions runner | `ubuntu-latest` | Runs the **Android CI** workflow (`.github/workflows/android.yml`) on every push to `main` and every pull request. It has read-only permissions and no secrets. |
+| `actions/checkout` | v7.0.1 (`3d3c42e5…`) | Checks out the code, with `persist-credentials: false` so the token isn't left on disk. |
+| `gradle/actions/wrapper-validation` | v6.4.0 (`3f5f9ada…`) | Fails if `gradle-wrapper.jar` isn't an official Gradle release. |
+| `actions/setup-java` | v6.0.1 (`de7274f0…`) | Installs Temurin JDK 21. |
+| `gradle/actions/setup-gradle` | v6.4.0 (`3f5f9ada…`) | Sets up Gradle and its cache. The build then runs the unit tests (debug and release), lint (debug and release) and an R8-shrunk release build. |
+| `actions/upload-artifact` | v7.0.1 (`043fb46d…`) | Keeps the test and lint reports for 14 days. |
+| GitHub CodeQL | Default setup, `default` query suite | Code scanning of the Java/Kotlin code and the workflows, on every push, pull request and weekly. |
+| Dependabot | Weekly | Version-update pull requests for Gradle dependencies and GitHub Actions, plus alerts and security updates. The ignore rules are in [section 9](#9-held-back-versions). |
+| OSV | [osv.dev](https://osv.dev) batch API | Known-vulnerability check of the resolved libraries, run when this page is regenerated. |
+
+Actions are pinned to full commit SHAs (the version is in a comment), so a moved or compromised tag
+upstream can't change what runs. Repository protections (secret scanning, push protection, private
+vulnerability reporting, the `main` ruleset) are set by `scripts/github-hardening.ps1`; see the
+[security assessment](SECURITY_ASSESSMENT.md#57-repository-and-supply-chain).
+
+## 9. Held-back versions
+
+Newer releases exist for these, checked 2026-10-02. Each is held back for the reason given, and
+Dependabot is told to skip the versions marked "ignored".
+
+| Component | In use | Newest stable | Why it's held |
+|---|---|---|---|
+| Android Gradle Plugin | 8.13.2 | 9.4.1 | AGP 9 is a major migration (new build DSL), to be done deliberately. Several of the holds below lift with it. Dependabot: major versions ignored. |
+| Gradle | 8.14.5 | 9.8.0 | Gradle 9 goes with AGP 9. Dependabot's proposal (#8) failed CI and was closed. |
+| Kotlin (+ Compose compiler) | 2.3.21 | 2.4.20 | Kotlin 2.4 needs R8 9.1.29+, which only AGP 9 bundles: AGP 8.13's R8 can't read Kotlin 2.4 metadata. Dependabot: ≥ 2.4 ignored. |
+| Compose BOM | 2026.06.01 | 2026.09.00 | Later BOMs need compileSdk 37 and AGP 9.1. Dependabot: ≥ 2026.08.00 ignored. |
+| `androidx.core` / `core-ktx` | 1.17.0 | 1.19.1 | 1.19+ needs compileSdk 37 and AGP 9.1. 1.18.x would work. Dependabot: ≥ 1.19 ignored. |
+| `androidx.lifecycle` (`lifecycle-runtime-compose`) | 2.10.0 | 2.11.0 | 2.11.0 needs compileSdk 37 and AGP 9.1. |
+| OkHttp | 4.12.0 | 5.5.0 | OkHttp 5 is a major version. Dependabot's proposal (#7) failed CI and was closed. 4.12.0 has no known vulnerabilities. |
+
+**Can be adopted now:** `androidx.activity:activity-compose` 1.13.0 (in use: 1.12.4) needs only
+compileSdk 36 and AGP 8.9.1, which Tentacle already has.
+
+**Up to date:** Media3 1.11.1 and kotlinx-coroutines 1.11.0 are the newest stable releases.
 
 ## Licence obligations
 
@@ -313,7 +368,9 @@ Tentacle's own components (the launcher activity, `PlaybackService`, `ArtworkPro
 ./gradlew --version
 ```
 
-Save the output into `docs/dependency-tree/`. Licences come from each artifact's POM
+Save the output into `docs/dependency-tree/`, keeping each file's three `#` header lines, and replace the
+`| Location:` line in `build-plugins.txt` with `<local JDK path>` (it shows your home folder). Licences
+come from each artifact's POM
 (`<licenses>`, following `<parent>` when a POM has none). Check for known vulnerabilities by sending the
 resolved list to the OSV batch API (`https://api.osv.dev/v1/querybatch`, ecosystem `Maven`).
 

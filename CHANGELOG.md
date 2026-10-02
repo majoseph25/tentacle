@@ -14,6 +14,12 @@ All notable changes to Tentacle. Versions follow `versionName` / `versionCode` i
   - **New setting:** **Settings → Android Auto** chooses which view the car shows first (Full list by
     default).
 
+### Documentation
+- **`docs/DEPENDENCIES.md` re-verified against the build** (all 130 libraries, versions and licences, and
+  the release APK's manifest). It now also covers CI and code scanning, Tentacle's own permissions and
+  package visibility, the Tailscale integration, and a table of held-back versions with the reason for
+  each.
+
 ## 0.6.4 (build 11) — 2026-10-01
 
 ### Changed
