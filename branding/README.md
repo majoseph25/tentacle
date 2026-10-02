@@ -4,7 +4,7 @@
 |---|---|---|
 | `tentacle-logo.png` | Full logo, emblem and "TENTACLE" wordmark (1254 × 1254, transparent) | Website, README, store graphics |
 | `tentacle-emblem.png` | Emblem only (822 × 930, transparent) | Anywhere the name appears next to it |
-| `play-store-icon-512.png` | 512 × 512 opaque PNG | Google Play's "App icon" (hi-res icon) |
+| `play-store-icon-512.png` | 512 × 512 opaque PNG, emblem on black | Google Play's "App icon" (hi-res icon) |
 
 The logo was created for the project owner with ChatGPT.
 
@@ -29,7 +29,8 @@ The full light and dark palettes are in `app/src/main/java/app/tentacle/music/ui
 
 These are generated from `tentacle-logo.png` and live under `app/src/main/res/`:
 - **Launcher icon:** `mipmap-anydpi/ic_launcher.xml`, an adaptive icon.
-  - Background: white.
+  - Background: black (`#000000`), so the icon looks the same in the launcher, Android Auto and
+    settings, and matches the app's dark screens.
   - Foreground: the emblem, sized to stay inside every launcher mask shape.
   - Monochrome layer: for Android 13+ themed icons.
   - Bitmaps at 5 densities in `mipmap-*dpi/`.

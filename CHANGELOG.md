@@ -2,6 +2,13 @@
 
 All notable changes to Tentacle. Versions follow `versionName` / `versionCode` in `app/build.gradle.kts`.
 
+## 0.6.4 (build 11) — 2026-10-01
+
+### Changed
+- **The app icon has a black background everywhere.** It was white in the launcher and Android Auto,
+  but the logo appears on black inside the app. The Google Play icon (`branding/play-store-icon-512.png`)
+  is regenerated on black to match.
+
 ## 0.6.3 (build 10) — 2026-10-01
 
 ### Security (fifth review)
