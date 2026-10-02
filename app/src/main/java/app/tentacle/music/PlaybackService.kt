@@ -155,12 +155,11 @@ class PlaybackService : MediaLibraryService() {
         /** Files the phone can't decode (e.g. some lossless or legacy formats) are retried as transcoded MP3 once. */
         override fun onPlayerError(error: PlaybackException) {
             // Couldn't reach the server (e.g. left home Wi-Fi): connect Tailscale if allowed, then retry once.
+            // Recovery only re-prepares: the player keeps its play/pause state, so a paused player is never
+            // started by itself (Android Auto rule MA-1, and expected on the phone too).
             if (error.errorCode in NETWORK_ERRORS) {
                 reconnectViaTailscale {
-                    if (player.playerError != null) {
-                        player.prepare()
-                        player.play()
-                    }
+                    if (player.playerError != null) player.prepare()
                 }
                 return
             }
@@ -171,8 +170,7 @@ class PlaybackService : MediaLibraryService() {
             val position = player.currentPosition
             player.replaceMediaItem(index, MediaItems.transcoded(prefs, item))
             player.seekTo(index, position)
-            player.prepare()
-            player.play()
+            player.prepare() // keeps the play/pause state (no play() here, see above)
         }
     }
 
@@ -336,15 +334,21 @@ class PlaybackService : MediaLibraryService() {
             controller: MediaSession.ControllerInfo,
             mediaItems: MutableList<MediaItem>,
         ): ListenableFuture<MutableList<MediaItem>> = scope.future(Dispatchers.IO) {
-            mediaItems.take(MAX_QUEUE_ITEMS).flatMap { item ->
+            Tailscale.awaitInFlight(TAILSCALE_WAIT_MS)
+            // Each entry can expand into a whole album, artist or playlist, so cap the total added (and stop
+            // asking the server once it's reached), not just the number of entries.
+            val added = mutableListOf<MediaItem>()
+            for (item in mediaItems.take(MAX_QUEUE_ITEMS)) {
+                if (added.size >= MAX_QUEUE_ITEMS) break
                 val query = item.requestMetadata.searchQuery
                 val tracks: List<JSONObject> = when {
                     query != null -> library.searchPlay(query)?.items.orEmpty()
                     isSafeId(item.mediaId) -> api.itemsByIds(listOf(item.mediaId))
                     else -> library.resolvePlayback(item.mediaId)?.items.orEmpty()
                 }
-                toQueue(tracks)
-            }.toMutableList()
+                added += toQueue(tracks).take(MAX_QUEUE_ITEMS - added.size)
+            }
+            added
         }
 
         /** "Play" from the car, Bluetooth or the notification after a restart: pick up where we left off. */

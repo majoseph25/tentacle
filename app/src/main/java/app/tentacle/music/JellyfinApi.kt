@@ -167,8 +167,7 @@ class JellyfinApi(private val prefs: Prefs) {
             .build()
         return http.newCall(req).execute().use { resp ->
             if (resp.isRedirect) {
-                val location = resp.header("Location") ?: "another address"
-                throw JellyfinException("Server redirected to $location. Use that address instead.", resp.code)
+                throw JellyfinException("Server redirected to ${shownLocation(resp.header("Location"))}. Use that address instead.", resp.code)
             }
             if (!resp.isSuccessful) throw JellyfinException("Server returned ${resp.code}", resp.code)
             val source = resp.body?.source() ?: return@use ByteArray(0)
@@ -217,6 +216,7 @@ class JellyfinApi(private val prefs: Prefs) {
         private const val MAX_RESPONSE_BYTES = 16L * 1024 * 1024
         private const val MAX_IMAGE_BYTES = 5L * 1024 * 1024
         private const val IDS_PER_REQUEST = 100
+        private const val MAX_SHOWN_LOCATION = 120
         private val JSON = "application/json".toMediaType()
         private val EMPTY_BODY = ByteArray(0).toRequestBody(null)
 
@@ -275,6 +275,13 @@ class JellyfinApi(private val prefs: Prefs) {
                     .build().toString()
             }
         }
+
+        /**
+         * A redirect's Location header as shown in the sign-in error. It's the server's text, so only a short,
+         * printable form is shown.
+         */
+        fun shownLocation(header: String?): String =
+            header?.filter { it in ' '..'~' }?.trim()?.take(MAX_SHOWN_LOCATION)?.takeIf { it.isNotEmpty() } ?: "another address"
 
         /** Adds a scheme if missing: http for LAN addresses, https for everything else. */
         fun normalizeUrl(input: String): String {

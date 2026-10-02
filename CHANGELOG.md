@@ -2,6 +2,26 @@
 
 All notable changes to Tentacle. Versions follow `versionName` / `versionCode` in `app/build.gradle.kts`.
 
+## 0.6.3 (build 10) — 2026-10-01
+
+### Security (fifth review)
+Full audit of the app, build and CI: no high-severity issues. Details are in the
+[security assessment](docs/SECURITY_ASSESSMENT.md#60-review-5-063-full-audit).
+- **"Add to queue" capped** (medium). A single request could expand into tens of thousands of songs and
+  hundreds of server requests. The total added is now capped at 500 songs.
+- **Voice queries capped** at 100 characters, like the search bar.
+- **Artwork cache capped by size** (64 MB) as well as by number of files.
+- **CI no longer keeps its GitHub token on disk** during the build (`persist-credentials: false`).
+- **The access check only trusts system-verified app IDs.** An unused option that would have trusted an
+  app-supplied package name is removed.
+- **Server redirect messages shortened and cleaned** before they're shown.
+
+### Fixed
+- **Recovery no longer starts playback by itself.** Recovering from a network error or an unsupported
+  file format could start a paused player. It now keeps the play/pause state.
+- **Tailscale "Connect now" isn't ignored.** Tapping it while an automatic check was running now makes a
+  real connect attempt.
+
 ## 0.6.2 (build 9) — 2026-09-30
 
 ### Dependencies

@@ -213,7 +213,8 @@ Being preinstalled isn't enough on its own, because many phones ship third-party
   - no redirects are followed (they could re-send the password or token elsewhere, or downgrade HTTPS),
   - HTTPS trusts system CAs only,
   - requests have a 9 s time limit, streams have none.
-- **Response sizes:** capped at 16 MB (images 5 MB). The phone decodes art at most 1024 px, and refuses
+- **Response sizes:** capped at 16 MB (images 5 MB). The artwork cache is cleared above 300 images or
+  64 MB. The phone decodes art at most 1024 px, and refuses
   images larger than 20,000 px.
 - **Storage:**
   - the token is kept in app-private preferences and excluded from backup and device transfer,
@@ -272,7 +273,8 @@ The token is left out when signing in.
 
 - **Car lists:** Android Auto can't page, so car lists are capped at 200, and large libraries get A–Z
   pickers.
-- **Queue length:** queues started from the library hold at most 150 songs.
+- **Queue length:** queues started from the library hold at most 150 songs, and one "add to queue"
+  request adds at most 500.
 - **Transcoding:** only MP3 (fallback and reduced-quality streams).
 - **Offline:** no downloads or offline playback.
 - **Voice from the phone:** there's no phone-side "Play X on Tentacle" intent, deliberately: an exported

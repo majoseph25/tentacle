@@ -42,14 +42,17 @@ object ClientAccess {
     /** Why a caller was allowed or rejected, for the connection log shown in Settings. */
     data class Decision(val allowed: Boolean, val packageName: String, val reason: String)
 
-    fun isAllowed(context: Context, uid: Int, packageName: String? = null): Boolean =
-        check(context, uid, packageName).allowed
+    fun isAllowed(context: Context, uid: Int): Boolean = check(context, uid).allowed
 
-    fun check(context: Context, uid: Int, packageName: String? = null): Decision {
+    /**
+     * Decides by [uid] alone, which the system vouches for (Binder / Media3). Package names are looked up
+     * from the uid, never taken from the caller, since a caller can claim any name.
+     */
+    fun check(context: Context, uid: Int): Decision {
         if (uid == Process.myUid()) return Decision(true, context.packageName, "this app")
         if (uid == Process.SYSTEM_UID) return Decision(true, "android", "system")
         val pm = context.packageManager
-        val packages = if (packageName != null) arrayOf(packageName) else pm.getPackagesForUid(uid).orEmpty()
+        val packages = pm.getPackagesForUid(uid).orEmpty()
         if (packages.isEmpty()) return Decision(false, "uid $uid", "unknown app")
         for (pkg in packages) {
             val reason = try {

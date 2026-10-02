@@ -52,6 +52,19 @@ class SecurityChecksTest {
         ).forEach { assertEquals(it, null, canonicalItemId(it)) }
     }
 
+    // ---- redirect message (server text shown to the user) ----
+
+    @Test
+    fun redirectLocationIsShortAndPrintable() {
+        assertEquals("https://music.example.com/", JellyfinApi.shownLocation("https://music.example.com/"))
+        assertEquals("another address", JellyfinApi.shownLocation(null))
+        assertEquals("another address", JellyfinApi.shownLocation("\u0000\n\t "))
+        assertEquals("https://a.example/x", JellyfinApi.shownLocation("https://a.example/\r\nx"))
+        assertEquals(120, JellyfinApi.shownLocation("https://e.example/" + "a".repeat(500)).length)
+        // A right-to-left override (used to disguise text) is dropped.
+        assertEquals("https://xn--e1a.example/gnp", JellyfinApi.shownLocation("https://xn--e1a.example/‮gnp"))
+    }
+
     // ---- LAN detection (cleartext warning, default scheme) ----
 
     @Test
