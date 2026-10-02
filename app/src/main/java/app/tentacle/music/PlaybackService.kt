@@ -34,6 +34,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.guava.future
 import kotlinx.coroutines.launch
 import org.json.JSONObject
@@ -102,6 +103,12 @@ class PlaybackService : MediaLibraryService() {
         )
         // Started by the car, Bluetooth or the phone app: connect Tailscale now if the settings ask for it.
         if (prefs.isSignedIn) Tailscale.ensureAsync(this, prefs)
+        // The car's artists/albums style changed in Settings: have Android Auto reload those lists.
+        scope.launch {
+            Library.carListStyleChanges.drop(1).collect {
+                session?.let { s -> CAR_LIST_PARENTS.forEach { s.notifyChildrenChanged(it, Int.MAX_VALUE, null) } }
+            }
+        }
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? = session
@@ -444,6 +451,9 @@ class PlaybackService : MediaLibraryService() {
         const val DEFAULT_ROOT_LIMIT = 4
         const val SONGS = "songs"
         val ROOT_TABS = listOf("home", SONGS, "albums", "artists", "playlists")
+
+        /** Lists whose layout in the car follows the Settings choice (full list or letter index). */
+        val CAR_LIST_PARENTS = listOf("artists", "sort:albums:name")
 
         /**
          * How long a library or play request waits for a Tailscale connection already under way. Short

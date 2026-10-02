@@ -48,6 +48,8 @@ import androidx.core.net.toUri
 import app.tentacle.music.Account
 import app.tentacle.music.ArtworkProvider
 import app.tentacle.music.BuildConfig
+import app.tentacle.music.CarListStyle
+import app.tentacle.music.Library
 import app.tentacle.music.Prefs
 import app.tentacle.music.StreamQuality
 import app.tentacle.music.Tailscale
@@ -66,6 +68,7 @@ fun SettingsScreen(
     val context = LocalContext.current
     val prefs = account.prefs
     var quality by remember { mutableStateOf(prefs.streamQuality) }
+    var carStyle by remember { mutableStateOf(prefs.carListStyle) }
     var cacheMessage by remember { mutableStateOf<String?>(null) }
     var clients by remember { mutableStateOf(prefs.clientLog()) }
     LaunchedEffect(Unit) { clients = prefs.clientLog() }
@@ -105,6 +108,38 @@ fun SettingsScreen(
                 ) {
                     RadioButton(selected = q == quality, onClick = null)
                     Text(q.label, Modifier.padding(start = 8.dp, top = 12.dp, bottom = 12.dp))
+                }
+            }
+        }
+
+        Section("Android Auto") {
+            Text(
+                "How the car shows Artists and Albums A–Z. Either way, a row at the top switches to the other view.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            CarListStyle.entries.forEach { style ->
+                Row(
+                    Modifier.fillMaxWidth().selectable(selected = style == carStyle, role = Role.RadioButton) {
+                        carStyle = style
+                        prefs.carListStyle = style
+                        Library.carListStyleChanges.value++
+                    },
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    RadioButton(selected = style == carStyle, onClick = null)
+                    Column(Modifier.padding(start = 8.dp, top = 8.dp, bottom = 8.dp)) {
+                        Text(if (style == CarListStyle.FULL) "Full list" else "Letter index (A–Z)")
+                        Text(
+                            if (style == CarListStyle.FULL) {
+                                "Every name, alphabetically, with letter headings"
+                            } else {
+                                "Pick a letter first, then the names starting with it"
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
         }

@@ -109,6 +109,8 @@ A–Z pickers for large libraries.
 | `songs` | All songs A–Z. Paged for the phone; a list or A–Z picker in the car. |
 | `artists`, `sort:albums:<name\|artist\|year\|added>` | All artists A–Z; all albums in one sort order. Paged for the phone (`Library.PAGED_LISTS`); in the car, the first 200, or an A–Z picker for artists and albums A–Z. |
 | `az:<albums\|artists\|songs>:<letter>` | One letter of an A–Z picker (`#` means non-letters). |
+| `artists@<n>`, `albums@<n>` | Android Auto: 200 artists or albums A–Z from position *n*, ending with a "More" row to `@<n+200>`. *n* is parsed by `Library.carChunkStart`; anything malformed or above 1,000,000 means 0. |
+| `artists:index`, `albums:index` | Android Auto: the letter index, with an "All … A–Z" row back to the full list. |
 | `album:ID`, `artist:ID`, `playlist:ID` | Containers. |
 | `track:ID\|<ctx>` | A track, plus the queue it belongs to (`album:ID`, `playlist:ID`, `artist:ID`, `songs:<index>`, `songsaz:<letter>`, `recent:all`). |
 | `ctx:<ctx>`, `shuffle:<ctx>` | "Play all" / "Shuffle" rows. `ctx` may also be `library:all` (150 random songs). |
@@ -271,8 +273,9 @@ The token is left out when signing in.
 
 ## Known limits
 
-- **Car lists:** Android Auto can't page, so car lists are capped at 200, and large libraries get A–Z
-  pickers.
+- **Car lists:** Android Auto can't page. Artists and albums A–Z come as full lists, 200 at a time with a
+  "More" row (or as a letter index, per Settings). Other car lists are capped at 200, and large libraries
+  get A–Z pickers for songs.
 - **Queue length:** queues started from the library hold at most 150 songs, and one "add to queue"
   request adds at most 500.
 - **Transcoding:** only MP3 (fallback and reduced-quality streams).

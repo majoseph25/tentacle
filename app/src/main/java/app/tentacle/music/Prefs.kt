@@ -31,6 +31,10 @@ class Prefs(context: Context) {
         get() = StreamQuality.parse(sp.getString("streamQuality", null))
         set(v) = sp.edit { putString("streamQuality", v.name) }
 
+    var carListStyle: CarListStyle
+        get() = CarListStyle.parse(sp.getString("carListStyle", null))
+        set(v) = sp.edit { putString("carListStyle", v.name) }
+
     var tailscaleMode: TailscaleMode
         get() = TailscaleMode.parse(sp.getString("tailscaleMode", null))
         set(v) = sp.edit { putString("tailscaleMode", v.name) }

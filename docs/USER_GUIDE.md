@@ -77,6 +77,8 @@ Music pauses if your headphones or Bluetooth disconnect.
   - **Original:** the file as stored on the server.
   - **High / Medium / Low:** 320, 192 or 128 kbps MP3, to use less mobile data.
   - The setting applies to songs you start after changing it.
+- **Android Auto:** whether the car shows Artists and Albums A–Z as a **Full list** (the default) or a
+  **Letter index**. See [Android Auto](#android-auto).
 - **Remote access with Tailscale:** see [Away from home: Tailscale](#away-from-home-tailscale).
 - **Clear cache:** deletes saved album art. It's downloaded again when needed.
 - **Android Auto connections:** the apps that recently asked to connect to Tentacle, and whether they
@@ -124,6 +126,12 @@ Connect your phone to the car and open **Tentacle** from Android Auto's app list
 
 - **Tabs:** Home, Albums, Artists, Playlists. All your songs are under **Home → All songs**, with an A–Z
   picker for large libraries.
+- **Artists and Albums → A–Z** show every name alphabetically, with letter headings. Long lists come
+  200 at a time: **More artists** / **More albums** at the end continues the list.
+  - **Jump to a letter** (at the top) switches to an A–Z index, and **All artists A–Z** / **All albums A–Z**
+    switches back.
+  - To make the letter index what the car shows first, choose it in **Settings → Android Auto** on the
+    phone.
 - **Now playing:** cover, controls, **shuffle** and **repeat**, and the queue icon for **Up next**.
 - **Search:** tap the search icon.
 - **Voice:** say "Hey Google, play *Abbey Road* on Tentacle" (or an artist, song or playlist).

@@ -26,7 +26,7 @@ needs to be running.
 | 🎵 **Now playing** | Artwork, seek bar, previous/play/next, shuffle, repeat, and Up next |
 | 📚 **Library** | Home, Songs (all of them, A–Z), Albums (four sort orders), Artists and Playlists |
 | 🔎 **Search** | Songs, artists and albums as you type |
-| 🚗 **Android Auto** | The same library as car tabs, plus now playing, Up next, search and voice ("Hey Google, play … on Tentacle") |
+| 🚗 **Android Auto** | The same library as car tabs (artists and albums as full A–Z lists or a letter index), plus now playing, Up next, search and voice ("Hey Google, play … on Tentacle") |
 | 🎧 **Everywhere** | Lock screen and notification, Bluetooth, headset and steering-wheel buttons; pauses when headphones disconnect; resumes where you left off |
 | 📶 **Streaming quality** | Original, or 320 / 192 / 128 kbps MP3 to save data. Files the phone can't play are converted automatically. |
 | 🌐 **Away from home** | Optional [Tailscale](https://tailscale.com) support: Tentacle turns your Tailscale VPN on only when your server can't be reached (for example in the car), and off again when you're done |
@@ -37,7 +37,7 @@ needs to be running.
 
 | | |
 |---|---|
-| **Android** | Version 0.6.4. Builds and passes CI. Tested on a phone, on the Android Auto emulator and in a car. A few car checks are still open ([open items](docs/SECURITY_ASSESSMENT.md#8-open-items)). |
+| **Android** | Version 0.7.0. Builds and passes CI. Tested on a phone, on the Android Auto emulator and in a car. A few car checks are still open ([open items](docs/SECURITY_ASSESSMENT.md#8-open-items)). |
 | **iOS** | Planned: a native Swift app with CarPlay |
 | **Releases** | Source tagged [`v0.5.0`](https://github.com/majoseph25/tentacle/releases/tag/v0.5.0). No downloadable app yet: build from source (below). |
 
