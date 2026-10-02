@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **App** | Tentacle 0.6.3 (build 10), Android |
+| **App** | Tentacle 0.6.4 (build 11), Android |
 | **Reviews** | Five full reviews (2026-09-27 to 2026-10-01), plus assessments of every change in between, and GitHub code scanning |
 | **Last updated** | 2026-10-01 |
 | **Performed by** | Claude (Anthropic's AI model), working in [Claude Code](https://claude.com/claude-code) for the project owner, Mark Joseph |
