@@ -2,6 +2,18 @@
 
 All notable changes to Tentacle. Versions follow `versionName` / `versionCode` in `app/build.gradle.kts`.
 
+## 0.7.0 (build 12) — 2026-10-02
+
+### Changed
+- **Android Auto lists every artist and album by name.** Artists and Albums → A–Z showed a letter picker
+  for libraries of more than 200. They now show every name alphabetically, with letter headings.
+  - **Long lists** come 200 at a time (Android Auto can't load longer lists piece by piece), with a
+    **More artists** / **More albums** row that continues the list.
+  - **Switching views:** **Jump to a letter** at the top switches to the A–Z index, and **All … A–Z**
+    switches back.
+  - **New setting:** **Settings → Android Auto** chooses which view the car shows first (Full list by
+    default).
+
 ## 0.6.4 (build 11) — 2026-10-01
 
 ### Changed

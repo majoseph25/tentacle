@@ -3,6 +3,7 @@
 
 package app.tentacle.music
 
+import kotlinx.coroutines.flow.MutableStateFlow
 import org.json.JSONObject
 
 /**
@@ -37,16 +38,19 @@ class Library(private val api: JellyfinApi, private val prefs: Prefs) {
             parentId == "home" -> home()
             parentId == "songs" -> songs(page, pageSize)
             parentId == "albums" -> albumSorts()
-            // The phone pages through every artist A–Z; the car (no paging) gets an A–Z picker when the list is long.
-            parentId == "artists" -> {
-                val paged = pageSize != Int.MAX_VALUE
-                val result = api.albumArtists(artistQuery(range(page, pageSize)))
-                if (paged || result.total <= MAX_LIST) {
-                    grouped(result.items, ::letterOf, ::artistEntry)
+            // The phone pages through every artist A–Z; the car (no paging) gets a full list in chunks, or a
+            // letter index, as chosen in Settings (see carList).
+            parentId == "artists" ->
+                if (pageSize != Int.MAX_VALUE) {
+                    grouped(api.albumArtists(artistQuery(range(page, pageSize))).items, ::letterOf, ::artistEntry)
                 } else {
-                    letters("artists", ContentStyle.LIST)
+                    carList(CarList.ARTISTS)
                 }
-            }
+            // Android Auto's full lists (continued from a position) and letter indexes.
+            parentId.startsWith(CarList.ARTISTS.chunkPrefix) -> carChunk(CarList.ARTISTS, carChunkStart(parentId))
+            parentId.startsWith(CarList.ALBUMS.chunkPrefix) -> carChunk(CarList.ALBUMS, carChunkStart(parentId))
+            parentId == CarList.ARTISTS.indexId -> carIndex(CarList.ARTISTS)
+            parentId == CarList.ALBUMS.indexId -> carIndex(CarList.ALBUMS)
             parentId == "playlists" -> api.items(
                 mapOf(
                     "IncludeItemTypes" to "Playlist", "MediaTypes" to "Audio", "SortBy" to "SortName",
@@ -218,14 +222,7 @@ class Library(private val api: JellyfinApi, private val prefs: Prefs) {
         val paged = pageSize != Int.MAX_VALUE
         val range = range(page, pageSize)
         return when (order) {
-            "name" -> {
-                val result = api.items(albumQuery(range))
-                if (paged || result.total <= MAX_LIST) {
-                    grouped(result.items, ::letterOf) { albumEntry(it) }
-                } else {
-                    letters("albums", ContentStyle.GRID)
-                }
-            }
+            "name" -> if (paged) grouped(api.items(albumQuery(range)).items, ::letterOf) { albumEntry(it) } else carList(CarList.ALBUMS)
             "artist" -> grouped(
                 api.items(albumQuery(mapOf("SortBy" to "AlbumArtist,ProductionYear,SortName") + range)).items,
                 { it.str("AlbumArtist").ifEmpty { "Unknown artist" } },
@@ -352,6 +349,63 @@ class Library(private val api: JellyfinApi, private val prefs: Prefs) {
         return if (c in 'A'..'Z') c.toString() else "#"
     }
 
+    // ---- Android Auto: artists and albums A–Z ----
+
+    /**
+     * The two A–Z lists the car shows in full or as a letter index. Android Auto can't page, so a full list
+     * comes in chunks of [MAX_LIST], each ending with a "More" row that opens the next chunk.
+     */
+    private enum class CarList(val key: String, val noun: String, val childStyle: ContentStyle, val icon: IconKind) {
+        ARTISTS("artists", "artists", ContentStyle.LIST, IconKind.ARTIST),
+        ALBUMS("albums", "albums", ContentStyle.GRID, IconKind.ALBUM),
+        ;
+
+        /** Media id prefix of a chunk: "<key>@<start index>". */
+        val chunkPrefix get() = "$key@"
+        val indexId get() = "$key:index"
+    }
+
+    /** The tab (or Albums → A–Z) as the user chose to see it in the car. */
+    private fun carList(kind: CarList): List<BrowseEntry> =
+        if (prefs.carListStyle == CarListStyle.INDEX) carIndex(kind) else carChunk(kind, 0)
+
+    /** The letter picker, with a row at the top to see every name instead. */
+    private fun carIndex(kind: CarList): List<BrowseEntry> = listOf(
+        BrowseEntry(
+            "${kind.chunkPrefix}0", "All ${kind.noun} A–Z", "Full list", browsable = true, icon = IconKind.SORT,
+            browsableStyle = kind.childStyle, itemStyle = ContentStyle.LIST,
+        ),
+    ) + letters(kind.key, kind.childStyle)
+
+    /**
+     * [MAX_LIST] names from position [start], under letter headings. The first chunk of a long list starts
+     * with a row to the letter index; every chunk but the last ends with a row to the next one.
+     */
+    private fun carChunk(kind: CarList, start: Int): List<BrowseEntry> {
+        val query = mapOf("StartIndex" to start.toString(), "Limit" to (MAX_LIST + 1).toString())
+        val page = when (kind) {
+            CarList.ARTISTS -> api.albumArtists(artistQuery(query))
+            CarList.ALBUMS -> api.items(albumQuery(query))
+        }
+        val shown = page.items.take(MAX_LIST)
+        val rows = mutableListOf<BrowseEntry>()
+        if (start == 0 && page.total > JUMP_ROW_MIN) {
+            rows += BrowseEntry(
+                kind.indexId, "Jump to a letter", "A–Z index", browsable = true, icon = IconKind.SORT,
+                browsableStyle = ContentStyle.LIST, itemStyle = ContentStyle.LIST,
+            )
+        }
+        rows += grouped(shown, ::letterOf) { if (kind == CarList.ARTISTS) artistEntry(it) else albumEntry(it) }
+        page.items.getOrNull(MAX_LIST)?.let { next ->
+            rows += BrowseEntry(
+                "${kind.chunkPrefix}${start + MAX_LIST}", "More ${kind.noun}",
+                "From “${next.str("Name").ifEmpty { "…" }}”", browsable = true, icon = kind.icon,
+                browsableStyle = kind.childStyle, itemStyle = ContentStyle.LIST,
+            )
+        }
+        return rows
+    }
+
     private fun letters(kind: String, childStyle: ContentStyle) =
         (listOf("#") + ('A'..'Z').map { it.toString() }).map {
             BrowseEntry(
@@ -402,6 +456,22 @@ class Library(private val api: JellyfinApi, private val prefs: Prefs) {
         val ALBUM_SORTS = listOf(
             "name" to "A–Z", "artist" to "By artist", "year" to "Newest releases", "added" to "Recently added",
         )
+
+        /** A full list in the car gets a "Jump to a letter" row above this many names. */
+        private const val JUMP_ROW_MIN = 30
+
+        /** Highest start position accepted in a car chunk id ("artists@N"), so N can't be absurd. */
+        private const val MAX_CHUNK_START = 1_000_000
+
+        /** Start position of a car chunk id ("artists@400" → 400); 0 if missing or malformed. */
+        fun carChunkStart(id: String): Int =
+            id.substringAfter('@', "").toIntOrNull()?.takeIf { it in 0..MAX_CHUNK_START } ?: 0
+
+        /**
+         * Goes up when the car list style changes in Settings, so the player service can tell Android Auto
+         * to reload those lists.
+         */
+        val carListStyleChanges = MutableStateFlow(0)
 
         /** Long lists the phone app pages through (Android Auto can't page, so it gets A–Z pickers). */
         val PAGED_LISTS = setOf(

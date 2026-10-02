@@ -30,6 +30,23 @@ enum class StreamQuality(val kbps: Int, val label: String) {
     }
 }
 
+/**
+ * How Android Auto shows the Artists tab and Albums A–Z (the phone always pages through full lists).
+ * Either way, the car can switch to the other one with a row at the top.
+ */
+enum class CarListStyle {
+    /** Every name, alphabetically, in chunks of [Library.MAX_LIST] with a "More" row between chunks. */
+    FULL,
+
+    /** A letter picker (#, A–Z); each letter opens the names starting with it. */
+    INDEX,
+    ;
+
+    companion object {
+        fun parse(name: String?): CarListStyle = entries.firstOrNull { it.name == name } ?: FULL
+    }
+}
+
 /** Whether Tentacle may ask the Tailscale app to connect (see [Tailscale]). */
 enum class TailscaleMode {
     OFF,

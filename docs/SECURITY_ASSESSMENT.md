@@ -2,11 +2,11 @@
 
 | | |
 |---|---|
-| **App** | Tentacle 0.6.4 (build 11), Android |
+| **App** | Tentacle 0.7.0 (build 12), Android |
 | **Reviews** | Five full reviews (2026-09-27 to 2026-10-01), plus assessments of every change in between, and GitHub code scanning |
 | **Last updated** | 2026-10-01 |
 | **Performed by** | Claude (Anthropic's AI model), working in [Claude Code](https://claude.com/claude-code) for the project owner, Mark Joseph |
-| **Current status** | 0 open findings · 0 open code scanning alerts · 34 / 34 tests pass · 0 known vulnerabilities in 130 shipped libraries |
+| **Current status** | 0 open findings · 0 open code scanning alerts · 37 / 37 tests pass · 0 known vulnerabilities in 130 shipped libraries |
 
 > **Please read this first.** These reviews were carried out by an AI assistant: code review, static
 > analysis, dependency scanning, build inspection and testing on one phone. They are **not** a professional
@@ -166,6 +166,9 @@ item is rebuilt from a validated item ID. A request for more than 500 items is c
 - **Cover art** (which can come from any file in a library): the dimensions are read before decoding, the
   image is downsampled to at most 1024 px, anything over 20,000 px is refused, and out-of-memory is caught.
 - **The phone app's artwork loader** opens only this app's own provider and icons, through a fixed table.
+- **Car list positions** (`artists@<n>`, 0.7.0): the number comes from Android Auto. It's parsed as an
+  integer and limited to 0–1,000,000 (anything else means 0), and the server is always asked for at most
+  201 items.
 - **Search:** queries are capped at 100 characters and sent URL-encoded. Results are capped at 60.
 - **Library pages** never exceed the requested size (Media3 treats a larger page as fatal). Page
   arithmetic is overflow-safe.
@@ -408,7 +411,7 @@ Latest results (0.6.3):
 
 | Check | Result |
 |---|---|
-| Unit tests | **34 / 34** pass in debug and release: ID validation, LAN detection, stream URLs without credentials, token only to the signed-in server, paging limits and overflow, artwork decode bounds, sign-in checks, Tailscale address detection and connect decisions, GUID rebuilding for artwork IDs, redirect message cleaning |
+| Unit tests | **37 / 37** pass in debug and release: ID validation, LAN detection, stream URLs without credentials, token only to the signed-in server, paging limits and overflow, artwork decode bounds, sign-in checks, Tailscale address detection and connect decisions, GUID rebuilding for artwork IDs, redirect message cleaning, car list positions |
 | Android lint | 0 errors in debug and release. Remaining warnings are only newer library versions and translatable-string notes. |
 | Dependencies | **0 known vulnerabilities** in 130 shipped libraries (OSV, 2026-10-01). Details in [DEPENDENCIES.md](DEPENDENCIES.md). |
 | Release APK | Not debuggable. No backup. Explicit network security config. targetSdk 36. Diagnostic code absent. Exported components as in [section 4](#4-attack-surface). |
