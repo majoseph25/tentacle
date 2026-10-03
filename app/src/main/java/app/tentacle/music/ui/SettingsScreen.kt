@@ -24,6 +24,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
@@ -41,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -51,6 +53,7 @@ import app.tentacle.music.BuildConfig
 import app.tentacle.music.CarListStyle
 import app.tentacle.music.Library
 import app.tentacle.music.Prefs
+import app.tentacle.music.R
 import app.tentacle.music.StreamQuality
 import app.tentacle.music.Tailscale
 import app.tentacle.music.TailscaleMode
@@ -80,6 +83,8 @@ fun SettingsScreen(
         Section("Account") {
             Text("Signed in as ${prefs.userName}", style = MaterialTheme.typography.titleMedium)
             Text(prefs.serverUrl, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(8.dp))
+            ConnectionStatus(Account.connectionSecurity(prefs.serverUrl))
             Spacer(Modifier.height(8.dp))
             OutlinedButton(onClick = {
                 // Stop and forget the queue first so nothing from this account keeps playing.
@@ -297,6 +302,49 @@ private fun TailscaleSettings(prefs: Prefs) {
         if (busy) CircularProgressIndicator(Modifier.size(24.dp))
     }
     status?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
+}
+
+/**
+ * Whether the connection to the server is encrypted. Shown for every server, not only at sign-in, so a
+ * plain http:// server at home is visible too (the sign-in warning is only for public http:// addresses).
+ */
+@Composable
+private fun ConnectionStatus(security: Account.ConnectionSecurity) {
+    val (encrypted, title, detail) = when (security) {
+        Account.ConnectionSecurity.HTTPS -> Triple(true, "Encrypted (https://)", "Your login and music are protected on the way.")
+        Account.ConnectionSecurity.HTTP_TAILSCALE -> Triple(
+            true, "Encrypted by Tailscale",
+            "The address is http://, but it's a Tailscale address, so Tailscale encrypts the connection.",
+        )
+        Account.ConnectionSecurity.HTTP_HOME -> Triple(
+            false, "Not encrypted (http://) · home network",
+            "Anyone on the same network could read your login and music. Fine on a network you trust; away from " +
+                "home, Tailscale encrypts the connection. Use an https:// address if your server has one.",
+        )
+        Account.ConnectionSecurity.HTTP_PUBLIC -> Triple(
+            false, "Not encrypted (http://) · public address",
+            "Your login and music could be read anywhere along the way, for example on public Wi-Fi or by your " +
+                "mobile carrier. Use your server's https:// address.",
+        )
+        Account.ConnectionSecurity.UNKNOWN -> return
+    }
+    val warn = security == Account.ConnectionSecurity.HTTP_PUBLIC
+    val tint = when {
+        warn -> MaterialTheme.colorScheme.error
+        encrypted -> MaterialTheme.colorScheme.primary
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    Row(verticalAlignment = Alignment.Top) {
+        Icon(
+            painterResource(if (encrypted) R.drawable.ic_lock else R.drawable.ic_lock_open),
+            contentDescription = null, tint = tint, modifier = Modifier.padding(top = 2.dp).size(20.dp),
+        )
+        Spacer(Modifier.width(8.dp))
+        Column {
+            Text(title, style = MaterialTheme.typography.labelLarge, color = tint)
+            Text(detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
 }
 
 @Composable

@@ -90,5 +90,32 @@ class Account(context: Context) {
             }
             return null
         }
+
+        /** How the connection to the signed-in server is protected, for the status line in Settings. */
+        fun connectionSecurity(serverUrl: String): ConnectionSecurity {
+            val url = serverUrl.toHttpUrlOrNull() ?: return ConnectionSecurity.UNKNOWN
+            return when {
+                url.isHttps -> ConnectionSecurity.HTTPS
+                Tailscale.isTailnetAddress(url.host) -> ConnectionSecurity.HTTP_TAILSCALE
+                JellyfinApi.isLocalHost(url.host) -> ConnectionSecurity.HTTP_HOME
+                else -> ConnectionSecurity.HTTP_PUBLIC
+            }
+        }
+    }
+
+    enum class ConnectionSecurity {
+        /** https://: encrypted end to end. */
+        HTTPS,
+
+        /** http:// to a Tailscale address: Tailscale's tunnel encrypts it on the way. */
+        HTTP_TAILSCALE,
+
+        /** http:// to a home-network address: readable by anyone on that network. */
+        HTTP_HOME,
+
+        /** http:// to a public address: readable anywhere along the way. */
+        HTTP_PUBLIC,
+
+        UNKNOWN,
     }
 }

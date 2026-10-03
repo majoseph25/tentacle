@@ -2,6 +2,14 @@
 
 All notable changes to Tentacle. Versions follow `versionName` / `versionCode` in `app/build.gradle.kts`.
 
+## 0.7.2 (build 14) — 2026-10-02
+
+### Added
+- **Connection status in Settings → Account.** It always shows whether the connection to your server is
+  encrypted: https://, encrypted by Tailscale, not encrypted on your home network, or not encrypted to a
+  public address (a warning). The sign-in warning only ever appeared for http:// to a *public* address,
+  so with a home server it never showed. Now an unencrypted home connection is visible too.
+
 ## 0.7.1 (build 13) — 2026-10-02
 
 ### Security (sixth review)

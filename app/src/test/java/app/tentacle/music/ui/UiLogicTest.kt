@@ -50,6 +50,22 @@ class UiLogicTest {
         assertNull(Account.preflight("jellyfin.example.com", "me", allowInsecure = false)) // defaults to https
     }
 
+    // ---- connection status shown in Settings ----
+
+    @Test
+    fun connectionSecurityDescribesEachKindOfAddress() {
+        assertEquals(Account.ConnectionSecurity.HTTPS, Account.connectionSecurity("https://music.example.com"))
+        assertEquals(Account.ConnectionSecurity.HTTPS, Account.connectionSecurity("https://192.168.1.10:8920"))
+        assertEquals(Account.ConnectionSecurity.HTTP_TAILSCALE, Account.connectionSecurity("http://100.101.102.103:8096"))
+        assertEquals(Account.ConnectionSecurity.HTTP_TAILSCALE, Account.connectionSecurity("http://media.tail1234.ts.net:8096"))
+        assertEquals(Account.ConnectionSecurity.HTTP_HOME, Account.connectionSecurity("http://192.168.1.10:8096"))
+        assertEquals(Account.ConnectionSecurity.HTTP_HOME, Account.connectionSecurity("http://10.0.0.5:8096"))
+        assertEquals(Account.ConnectionSecurity.HTTP_HOME, Account.connectionSecurity("http://nas.local:8096"))
+        assertEquals(Account.ConnectionSecurity.HTTP_PUBLIC, Account.connectionSecurity("http://jellyfin.example.com"))
+        assertEquals(Account.ConnectionSecurity.HTTP_PUBLIC, Account.connectionSecurity("http://8.8.8.8:8096"))
+        assertEquals(Account.ConnectionSecurity.UNKNOWN, Account.connectionSecurity(""))
+    }
+
     // ---- time labels ----
 
     @Test

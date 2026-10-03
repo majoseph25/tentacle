@@ -23,6 +23,13 @@ Auto. It's an unofficial app and isn't affiliated with the Jellyfin project.
 isn't encrypted, so your login and music could be read on the way. Use your server's `https://` address
 if it has one. Tailscale addresses count as private.
 
+Whatever address you use, **Settings → Account** always shows whether the connection is encrypted:
+- **https://:** encrypted.
+- **A Tailscale address:** encrypted by Tailscale.
+- **http:// on your home network:** not encrypted. Anyone on that network could read it, so it's fine on
+  a network you trust.
+- **http:// to a public address:** not encrypted, shown as a warning.
+
 ## The phone app
 
 Three tabs along the bottom: **Now playing**, **Library** and **Settings**.
@@ -71,7 +78,8 @@ Music pauses if your headphones or Bluetooth disconnect.
 
 ### Settings
 
-- **Account:** who you're signed in as, and **Sign out**. Signing out stops the music, forgets your login
+- **Account:** who you're signed in as, whether the connection to your server is encrypted, and
+  **Sign out**. Signing out stops the music, forgets your login
   and saved queue, and ends the login on your server too.
 - **Streaming quality:**
   - **Original:** the file as stored on the server.

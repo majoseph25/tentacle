@@ -2,11 +2,11 @@
 
 | | |
 |---|---|
-| **App** | Tentacle 0.7.1 (build 13), Android |
+| **App** | Tentacle 0.7.2 (build 14), Android |
 | **Reviews** | Six full reviews (2026-09-27 to 2026-10-02), plus assessments of every change in between, and GitHub code scanning |
 | **Last updated** | 2026-10-02 |
 | **Performed by** | Claude (Anthropic's AI model), working in [Claude Code](https://claude.com/claude-code) for the project owner, Mark Joseph |
-| **Current status** | 0 open findings (1 optional owner action, [8.3](#83-before-a-public-or-store-release)) · 0 open code scanning alerts · 39 / 39 tests pass · 0 known vulnerabilities in 130 shipped libraries |
+| **Current status** | 0 open findings (1 optional owner action, [8.3](#83-before-a-public-or-store-release)) · 0 open code scanning alerts · 40 / 40 tests pass · 0 known vulnerabilities in 130 shipped libraries |
 
 > **Please read this first.** These reviews were carried out by an AI assistant: code review, static
 > analysis, dependency scanning, build inspection and testing on one phone. They are **not** a professional
@@ -140,6 +140,13 @@ item is rebuilt from a validated item ID. A request for more than 500 items is c
 - **Redirects are refused** for API calls and streams alike. A redirect could otherwise re-send the
   password or token, or downgrade HTTPS to HTTP.
 - **HTTPS trusts only system certificate authorities** (explicit `network_security_config.xml`).
+- **Connection status (0.7.2):** Settings → Account always shows whether the connection is encrypted:
+  - https://,
+  - http:// to a Tailscale address (encrypted by Tailscale),
+  - http:// on the home network,
+  - http:// to a public address (shown as a warning).
+
+  An unencrypted home server is visible, not only flagged at sign-in.
 - **Plain HTTP:** allowed for home servers. Without a scheme, public addresses default to HTTPS, and
   signing in to a public `http://` address shows a warning first.
 - **Limits:**
@@ -459,7 +466,7 @@ Latest results (0.7.1):
 
 | Check | Result |
 |---|---|
-| Unit tests | **39 / 39** pass in debug and release: ID validation, LAN detection, stream URLs without credentials, token only to the signed-in server, paging limits and overflow, artwork decode bounds, sign-in checks, Tailscale address detection and connect decisions, GUID rebuilding for artwork IDs, redirect message cleaning, car list positions, JSON nesting depth |
+| Unit tests | **40 / 40** pass in debug and release: ID validation, LAN detection, stream URLs without credentials, token only to the signed-in server, paging limits and overflow, artwork decode bounds, sign-in checks, Tailscale address detection and connect decisions, GUID rebuilding for artwork IDs, redirect message cleaning, car list positions, JSON nesting depth, connection status |
 | Android lint | 0 errors in debug and release. Remaining warnings are only newer library versions and translatable-string notes. |
 | Dependencies | **0 known vulnerabilities** in 130 shipped libraries (OSV, 2026-10-01). Details in [DEPENDENCIES.md](DEPENDENCIES.md). |
 | Release APK | Not debuggable. No backup. Explicit network security config. targetSdk 36. Diagnostic code absent. Exported components as in [section 4](#4-attack-surface). |
@@ -493,7 +500,7 @@ These need a phone, a car or the Desktop Head Unit. Unit tests can't cover them:
 
 | ID | Risk | Why it's accepted |
 |---|---|---|
-| R-1 | Plain HTTP is allowed app-wide | Most home servers use `http://` on the LAN, and Android can't allow cleartext by IP range. Public addresses default to HTTPS, with a warning otherwise. |
+| R-1 | Plain HTTP is allowed app-wide | Most home servers use `http://` on the LAN, and Android can't allow cleartext by IP range. Public addresses default to HTTPS, with a warning otherwise. Since 0.7.2, Settings → Account shows whether the connection is encrypted. |
 | R-2 | The token is stored unencrypted inside the app sandbox | Other apps can't read the sandbox. `EncryptedSharedPreferences` is deprecated, and Keystore wrapping adds little on an unrooted phone. |
 | R-3 | Apps with notification access count as trusted | They can already control every media session on the phone (Android's design). This matches Google's reference app. |
 | R-4 | Google apps are recognized via the preinstalled Play services certificate | Phones without Play services fall back to the preinstalled/Play-installed rule; Android Auto needs Play services anyway. |
