@@ -2,11 +2,11 @@
 
 | | |
 |---|---|
-| **App** | Tentacle 0.7.1 (build 13), Android |
+| **App** | Tentacle 0.7.2 (build 14), Android |
 | **Reviews** | Six full reviews (2026-09-27 to 2026-10-02), plus assessments of every change in between, and GitHub code scanning |
 | **Last updated** | 2026-10-02 |
 | **Performed by** | Claude (Anthropic's AI model), working in [Claude Code](https://claude.com/claude-code) for the project owner, Mark Joseph |
-| **Current status** | 0 open code findings · 3 repository actions for the owner ([8.3](#83-before-a-public-or-store-release)) · 0 open code scanning alerts · 39 / 39 tests pass · 0 known vulnerabilities in 130 shipped libraries |
+| **Current status** | 0 open findings (1 optional owner action, [8.3](#83-before-a-public-or-store-release)) · 0 open code scanning alerts · 40 / 40 tests pass · 0 known vulnerabilities in 130 shipped libraries |
 
 > **Please read this first.** These reviews were carried out by an AI assistant: code review, static
 > analysis, dependency scanning, build inspection and testing on one phone. They are **not** a professional
@@ -54,7 +54,7 @@ plays. The main protections:
 | — | 2026-09-29 | 0.6.0–0.6.1 | Optional Tailscale connect, then connect only when needed and turn off again | 0 (1 accepted risk) | 3 | 0 |
 | — | 2026-09-30 | 0.6.1–0.6.2 | GitHub code scanning (CodeQL): 5 alerts, one input, none exploitable | 5 (hardening) | 0 | 0 |
 | 5 | 2026-10-01 | 0.6.3 | Full audit of the whole app, build and CI | 6 (1 medium, 3 low, 2 info) | 2 | 0 |
-| 6 | 2026-10-02 | 0.7.1 | Full audit: app, release APK, git history, GitHub settings | 4 (2 low, 2 info) | 0 | 3 (owner actions) |
+| 6 | 2026-10-02 | 0.7.1 | Full audit: app, release APK, git history, GitHub settings | 4 (2 low, 2 info) | 0 | 0 (1 optional owner action) |
 
 Version 0.3.0 replaced the original remote-control design, so several early findings are now **obsolete**:
 the code they concerned no longer exists. They're marked as such in [section 6](#6-findings).
@@ -140,6 +140,13 @@ item is rebuilt from a validated item ID. A request for more than 500 items is c
 - **Redirects are refused** for API calls and streams alike. A redirect could otherwise re-send the
   password or token, or downgrade HTTPS to HTTP.
 - **HTTPS trusts only system certificate authorities** (explicit `network_security_config.xml`).
+- **Connection status (0.7.2):** Settings → Account always shows whether the connection is encrypted:
+  - https://,
+  - http:// to a Tailscale address (encrypted by Tailscale),
+  - http:// on the home network,
+  - http:// to a public address (shown as a warning).
+
+  An unencrypted home server is visible, not only flagged at sign-in.
 - **Plain HTTP:** allowed for home servers. Without a scheme, public addresses default to HTTPS, and
   signing in to a public `http://` address shows a warning first.
 - **Limits:**
@@ -207,7 +214,7 @@ item is rebuilt from a validated item ID. A request for more than 500 items is c
 | Secret scanning and push protection | On |
 | Ruleset protecting `main` (pull requests, passing CI, no force-push or deletion; admins can bypass) | On |
 | Code scanning (CodeQL default setup) | On |
-| Actions limited to GitHub-owned and `gradle/*` actions; outside contributors' workflows always need approval | **Pending:** in `scripts/github-hardening.ps1` (0.7.1), applied when the owner runs it |
+| Actions limited to GitHub-owned and `gradle/*` actions; outside contributors' workflows always need approval | On (2026-10-02, via `scripts/github-hardening.ps1`) |
 | Full git history scanned for secrets and personal data before the repository went public | Done (2026-09-29, clean) |
 
 The repository went public on 2026-09-29. The GitHub settings above are applied by
@@ -268,8 +275,8 @@ No high- or medium-severity issues were found.
 | ID | Severity | Finding | Resolution |
 |---|---|---|---|
 | A6-1 | Low | **Deeply nested JSON could crash sign-in.** Android's `org.json` parses nesting recursively. A server reply nested thousands of levels deep (a hostile server, or tampering with plain-HTTP traffic) overflows the stack. The resulting `StackOverflowError` isn't caught by `catch (e: Exception)`, so it would crash the app during sign-in. Library requests run inside Media3 futures, which turn it into a failed request | `JellyfinApi.parseObject` measures the nesting depth first (a linear scan, no recursion) and refuses replies nested more than 64 levels. Both parse points use it. Unit-tested, including a 100,000-level reply |
-| A6-2 | Low (repository) | **Any action allowed.** GitHub Actions allowed any action from any publisher. Our workflow is pinned and read-only, but a malicious action added later would run | `scripts/github-hardening.ps1` now restricts Actions to GitHub-owned actions (checkout, setup-java, upload-artifact, CodeQL, Dependabot) and `gradle/*`. **Takes effect when the owner runs the script** (see [8.3](#83-before-a-public-or-store-release)) |
-| A6-3 | Info (repository) | **Fork PR approval only once.** Workflows from forked pull requests needed approval only for first-time contributors | The script now requires approval for all outside contributors. Same owner action |
+| A6-2 | Low (repository) | **Any action allowed.** GitHub Actions allowed any action from any publisher. Our workflow is pinned and read-only, but a malicious action added later would run | `scripts/github-hardening.ps1` now restricts Actions to GitHub-owned actions (checkout, setup-java, upload-artifact, CodeQL, Dependabot) and `gradle/*`. Applied 2026-10-02. CI was re-run under the restriction and every step passed |
+| A6-3 | Info (repository) | **Fork PR approval only once.** Workflows from forked pull requests needed approval only for first-time contributors | The script now requires approval for all outside contributors. Applied 2026-10-02 |
 | A6-4 | Info (repository) | **Old commit still reachable.** Commit `ac6c776`, force-pushed off the PR #12 branch on 2026-09-30 because it contained the local JDK path (which shows the Windows user name), is still retrievable from GitHub by its full SHA. It's on no branch or tag, and the merged code never contained it | Only GitHub Support can purge an unreferenced commit. Optional owner action (see [8.3](#83-before-a-public-or-store-release)) |
 
 **Reviewed and found sound:**
@@ -459,7 +466,7 @@ Latest results (0.7.1):
 
 | Check | Result |
 |---|---|
-| Unit tests | **39 / 39** pass in debug and release: ID validation, LAN detection, stream URLs without credentials, token only to the signed-in server, paging limits and overflow, artwork decode bounds, sign-in checks, Tailscale address detection and connect decisions, GUID rebuilding for artwork IDs, redirect message cleaning, car list positions, JSON nesting depth |
+| Unit tests | **40 / 40** pass in debug and release: ID validation, LAN detection, stream URLs without credentials, token only to the signed-in server, paging limits and overflow, artwork decode bounds, sign-in checks, Tailscale address detection and connect decisions, GUID rebuilding for artwork IDs, redirect message cleaning, car list positions, JSON nesting depth, connection status |
 | Android lint | 0 errors in debug and release. Remaining warnings are only newer library versions and translatable-string notes. |
 | Dependencies | **0 known vulnerabilities** in 130 shipped libraries (OSV, 2026-10-01). Details in [DEPENDENCIES.md](DEPENDENCIES.md). |
 | Release APK | Not debuggable. No backup. Explicit network security config. targetSdk 36. Diagnostic code absent. Exported components as in [section 4](#4-attack-surface). |
@@ -493,7 +500,7 @@ These need a phone, a car or the Desktop Head Unit. Unit tests can't cover them:
 
 | ID | Risk | Why it's accepted |
 |---|---|---|
-| R-1 | Plain HTTP is allowed app-wide | Most home servers use `http://` on the LAN, and Android can't allow cleartext by IP range. Public addresses default to HTTPS, with a warning otherwise. |
+| R-1 | Plain HTTP is allowed app-wide | Most home servers use `http://` on the LAN, and Android can't allow cleartext by IP range. Public addresses default to HTTPS, with a warning otherwise. Since 0.7.2, Settings → Account shows whether the connection is encrypted. |
 | R-2 | The token is stored unencrypted inside the app sandbox | Other apps can't read the sandbox. `EncryptedSharedPreferences` is deprecated, and Keystore wrapping adds little on an unrooted phone. |
 | R-3 | Apps with notification access count as trusted | They can already control every media session on the phone (Android's design). This matches Google's reference app. |
 | R-4 | Google apps are recognized via the preinstalled Play services certificate | Phones without Play services fall back to the preinstalled/Play-installed rule; Android Auto needs Play services anyway. |
@@ -510,7 +517,7 @@ These need a phone, a car or the Desktop Head Unit. Unit tests can't cover them:
 | Licence | **Done:** Apache-2.0, `NOTICE` credits Mark Joseph, name and logo reserved |
 | Name and branding | **Done:** own name (Tentacle) and logo, and "unofficial, not affiliated with Jellyfin" stated. Keep the store listing the same, and don't use Jellyfin's logo. |
 | Repository hardening | **Done:** public since 2026-09-29, with every control in [5.7](#57-repository-and-supply-chain) on |
-| Actions restrictions (A6-2, A6-3) | **To do (owner):** run `powershell -ExecutionPolicy Bypass -File scripts/github-hardening.ps1` once the 0.7.1 changes are merged |
+| Actions restrictions (A6-2, A6-3) | **Done:** applied 2026-10-02. CI passed under them |
 | Old commit `ac6c776` (A6-4) | **Optional (owner):** ask GitHub Support to remove the unreferenced commit from the `majoseph25/tentacle` repository |
 | Open-source licence notices in the app | **To do:** an in-app licences screen, or a `THIRD_PARTY_LICENSES` file |
 | Privacy policy and Data safety form | **To do:** fill in [PRIVACY.md](../PRIVACY.md), host it at a public URL, and complete Play's Data safety form |

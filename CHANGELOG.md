@@ -2,6 +2,14 @@
 
 All notable changes to Tentacle. Versions follow `versionName` / `versionCode` in `app/build.gradle.kts`.
 
+## 0.7.2 (build 14) — 2026-10-02
+
+### Added
+- **Connection status in Settings → Account.** It always shows whether the connection to your server is
+  encrypted: https://, encrypted by Tailscale, not encrypted on your home network, or not encrypted to a
+  public address (a warning). The sign-in warning only ever appeared for http:// to a *public* address,
+  so with a home server it never showed. Now an unencrypted home connection is visible too.
+
 ## 0.7.1 (build 13) — 2026-10-02
 
 ### Security (sixth review)
@@ -12,8 +20,8 @@ medium-severity issues. Details are in the
   server, or tampered plain-HTTP traffic) could overflow the JSON parser and crash the app during sign-in.
   Replies nested more than 64 levels are now rejected before parsing.
 - **GitHub Actions restrictions** were added to `scripts/github-hardening.ps1`: only GitHub's own actions
-  and Gradle's may run, and workflows from outside contributors always need approval. They take effect
-  when the owner runs the script.
+  and Gradle's may run, and workflows from outside contributors always need approval. Applied to the
+  repository on 2026-10-02, after the merge; CI passes under them.
 
 ## 0.7.0 (build 12) — 2026-10-02
 
