@@ -2,6 +2,19 @@
 
 All notable changes to Tentacle. Versions follow `versionName` / `versionCode` in `app/build.gradle.kts`.
 
+## 0.7.1 (build 13) — 2026-10-02
+
+### Security (sixth review)
+Full audit of the app, the release APK, the git history and the GitHub settings: no high- or
+medium-severity issues. Details are in the
+[security assessment](docs/SECURITY_ASSESSMENT.md#60-review-6-071-full-audit).
+- **Deeply nested server replies are refused.** A reply nested thousands of levels deep (from a hostile
+  server, or tampered plain-HTTP traffic) could overflow the JSON parser and crash the app during sign-in.
+  Replies nested more than 64 levels are now rejected before parsing.
+- **GitHub Actions restrictions** were added to `scripts/github-hardening.ps1`: only GitHub's own actions
+  and Gradle's may run, and workflows from outside contributors always need approval. They take effect
+  when the owner runs the script.
+
 ## 0.7.0 (build 12) — 2026-10-02
 
 ### Changed
@@ -31,7 +44,7 @@ All notable changes to Tentacle. Versions follow `versionName` / `versionCode` i
 
 ### Security (fifth review)
 Full audit of the app, build and CI: no high-severity issues. Details are in the
-[security assessment](docs/SECURITY_ASSESSMENT.md#60-review-5-063-full-audit).
+[security assessment](docs/SECURITY_ASSESSMENT.md#60a-review-5-063-full-audit).
 - **"Add to queue" capped** (medium). A single request could expand into tens of thousands of songs and
   hundreds of server requests. The total added is now capped at 500 songs.
 - **Voice queries capped** at 100 characters, like the search bar.

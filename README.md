@@ -37,7 +37,7 @@ needs to be running.
 
 | | |
 |---|---|
-| **Android** | Version 0.7.0. Builds and passes CI. Tested on a phone, on the Android Auto emulator and in a car. A few car checks are still open ([open items](docs/SECURITY_ASSESSMENT.md#8-open-items)). |
+| **Android** | Version 0.7.1. Builds and passes CI. Tested on a phone, on the Android Auto emulator and in a car. A few car checks are still open ([open items](docs/SECURITY_ASSESSMENT.md#8-open-items)). |
 | **iOS** | Planned: a native Swift app with CarPlay |
 | **Releases** | Source tagged [`v0.5.0`](https://github.com/majoseph25/tentacle/releases/tag/v0.5.0). No downloadable app yet: build from source (below). |
 
@@ -71,7 +71,7 @@ Also: [contributing](CONTRIBUTING.md) · [security policy](SECURITY.md) · [priv
   a URL.
 - **Other apps:** only Android Auto, Google Assistant and the system can browse your library or choose
   what plays. Other apps are refused.
-- **Reviews:** five full security reviews so far, plus GitHub code scanning, with every finding fixed. The details, including what's
+- **Reviews:** six full security reviews so far, plus GitHub code scanning, with every finding fixed. The details, including what's
   still open, are in the [security assessment](docs/SECURITY_ASSESSMENT.md).
 
 Found a vulnerability? Please report it privately, as described in [SECURITY.md](SECURITY.md).

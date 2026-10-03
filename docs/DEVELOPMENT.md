@@ -67,6 +67,8 @@ versions. The workflow's actions are pinned to commit SHAs, with a version comme
 - private vulnerability reporting,
 - secret scanning and push protection,
 - code scanning (CodeQL default setup),
+- GitHub Actions limited to GitHub-owned and `gradle/*` actions, with approval required for every outside
+  contributor's workflow run,
 - a ruleset protecting `main`.
 
 The script is safe to run again at any time, and reports anything GitHub refuses.

@@ -2,11 +2,11 @@
 
 | | |
 |---|---|
-| **App** | Tentacle 0.7.0 (build 12), Android |
-| **Reviews** | Five full reviews (2026-09-27 to 2026-10-01), plus assessments of every change in between, and GitHub code scanning |
-| **Last updated** | 2026-10-01 |
+| **App** | Tentacle 0.7.1 (build 13), Android |
+| **Reviews** | Six full reviews (2026-09-27 to 2026-10-02), plus assessments of every change in between, and GitHub code scanning |
+| **Last updated** | 2026-10-02 |
 | **Performed by** | Claude (Anthropic's AI model), working in [Claude Code](https://claude.com/claude-code) for the project owner, Mark Joseph |
-| **Current status** | 0 open findings · 0 open code scanning alerts · 37 / 37 tests pass · 0 known vulnerabilities in 130 shipped libraries |
+| **Current status** | 0 open code findings · 3 repository actions for the owner ([8.3](#83-before-a-public-or-store-release)) · 0 open code scanning alerts · 39 / 39 tests pass · 0 known vulnerabilities in 130 shipped libraries |
 
 > **Please read this first.** These reviews were carried out by an AI assistant: code review, static
 > analysis, dependency scanning, build inspection and testing on one phone. They are **not** a professional
@@ -54,6 +54,7 @@ plays. The main protections:
 | — | 2026-09-29 | 0.6.0–0.6.1 | Optional Tailscale connect, then connect only when needed and turn off again | 0 (1 accepted risk) | 3 | 0 |
 | — | 2026-09-30 | 0.6.1–0.6.2 | GitHub code scanning (CodeQL): 5 alerts, one input, none exploitable | 5 (hardening) | 0 | 0 |
 | 5 | 2026-10-01 | 0.6.3 | Full audit of the whole app, build and CI | 6 (1 medium, 3 low, 2 info) | 2 | 0 |
+| 6 | 2026-10-02 | 0.7.1 | Full audit: app, release APK, git history, GitHub settings | 4 (2 low, 2 info) | 0 | 3 (owner actions) |
 
 Version 0.3.0 replaced the original remote-control design, so several early findings are now **obsolete**:
 the code they concerned no longer exists. They're marked as such in [section 6](#6-findings).
@@ -160,6 +161,8 @@ item is rebuilt from a validated item ID. A request for more than 500 items is c
 
 - **Item IDs:** every ID that reaches a URL path or a file name must match `[A-Za-z0-9-]{1,64}`, which
   rules out path traversal.
+- **JSON from the server** (0.7.1): replies nested more than 64 levels are refused before parsing
+  (`JellyfinApi.parseObject`), so a hostile reply can't overflow the parser's stack.
 - **IDs from other apps** (artwork requests, 0.6.1): only a Jellyfin GUID is accepted. It's rebuilt from
   its numeric value (`canonicalItemId`), so none of the requesting app's text reaches the cache file name
   or the server URL.
@@ -204,6 +207,7 @@ item is rebuilt from a validated item ID. A request for more than 500 items is c
 | Secret scanning and push protection | On |
 | Ruleset protecting `main` (pull requests, passing CI, no force-push or deletion; admins can bypass) | On |
 | Code scanning (CodeQL default setup) | On |
+| Actions limited to GitHub-owned and `gradle/*` actions; outside contributors' workflows always need approval | **Pending:** in `scripts/github-hardening.ps1` (0.7.1), applied when the owner runs it |
 | Full git history scanned for secrets and personal data before the repository went public | Done (2026-09-29, clean) |
 
 The repository went public on 2026-09-29. The GitHub settings above are applied by
@@ -245,7 +249,51 @@ Added in 0.6.0 for servers that are reachable only through Tailscale away from h
 Severity is the impact on a user of the app. Every finding below is **resolved**. "Obsolete" means the
 affected code was removed when the app became a standalone player in 0.3.0.
 
-### 6.0 Review 5 (0.6.3): full audit
+### 6.0 Review 6 (0.7.1): full audit
+
+**Scope:**
+- every change since review 5, line by line: 0.6.4's app icon, and 0.7.0's Android Auto A–Z lists and
+  their setting,
+- a fresh re-read of the security-critical code (access control, the network client, the artwork
+  provider, queue resolution, Tailscale),
+- automated checks:
+  - unit tests and lint (debug and release),
+  - OSV (2026-10-02: 0 of 130 libraries vulnerable),
+  - the release APK's manifest and flags,
+  - a scan of the full git history (21 commits) for secrets, personal data and sensitive files,
+  - an audit of the GitHub repository's security settings through the API.
+
+No high- or medium-severity issues were found.
+
+| ID | Severity | Finding | Resolution |
+|---|---|---|---|
+| A6-1 | Low | **Deeply nested JSON could crash sign-in.** Android's `org.json` parses nesting recursively. A server reply nested thousands of levels deep (a hostile server, or tampering with plain-HTTP traffic) overflows the stack. The resulting `StackOverflowError` isn't caught by `catch (e: Exception)`, so it would crash the app during sign-in. Library requests run inside Media3 futures, which turn it into a failed request | `JellyfinApi.parseObject` measures the nesting depth first (a linear scan, no recursion) and refuses replies nested more than 64 levels. Both parse points use it. Unit-tested, including a 100,000-level reply |
+| A6-2 | Low (repository) | **Any action allowed.** GitHub Actions allowed any action from any publisher. Our workflow is pinned and read-only, but a malicious action added later would run | `scripts/github-hardening.ps1` now restricts Actions to GitHub-owned actions (checkout, setup-java, upload-artifact, CodeQL, Dependabot) and `gradle/*`. **Takes effect when the owner runs the script** (see [8.3](#83-before-a-public-or-store-release)) |
+| A6-3 | Info (repository) | **Fork PR approval only once.** Workflows from forked pull requests needed approval only for first-time contributors | The script now requires approval for all outside contributors. Same owner action |
+| A6-4 | Info (repository) | **Old commit still reachable.** Commit `ac6c776`, force-pushed off the PR #12 branch on 2026-09-30 because it contained the local JDK path (which shows the Windows user name), is still retrievable from GitHub by its full SHA. It's on no branch or tag, and the merged code never contained it | Only GitHub Support can purge an unreferenced commit. Optional owner action (see [8.3](#83-before-a-public-or-store-release)) |
+
+**Reviewed and found sound:**
+- **0.7.0's car list positions** (`artists@<n>`): parsed and bounded, so no overflow is possible; the
+  server is asked for at most 201 items; the new IDs can't collide with existing ones.
+- **The Settings → Android Auto reload listener** is cancelled with the service.
+- **The icon change** is a colour value only.
+- **Release APK:** not debuggable, backups off, the explicit network security config present, and the
+  exported components unchanged. The only log strings are the intended release messages, which carry no
+  personal data.
+- **GitHub:**
+  - 0 open Dependabot, secret scanning or code scanning alerts,
+  - secret scanning with push protection, and private vulnerability reporting, are on,
+  - the `main` ruleset is active,
+  - workflows get a read-only default token and can't approve pull requests,
+  - there are no deploy keys, webhooks or Actions secrets.
+
+**Considered, not adopted:**
+- **GitHub's "require SHA pinning" policy for Actions.** Our own workflow is already fully pinned, and
+  it's unclear whether GitHub's managed workflows (CodeQL default setup, Dependabot) would still run under
+  it.
+- **Secret scanning for non-provider patterns.** It needs GitHub Advanced Security.
+
+### 6.0a Review 5 (0.6.3): full audit
 
 **Scope:**
 - every source file,
@@ -283,7 +331,7 @@ No high-severity issues were found.
 - **Gradle dependency verification** (`verification-metadata.xml`, which checks every downloaded library's checksum) would harden the build against a compromised repository. It needs regenerating on every dependency update.
 - **Instrumented UI tests** would cover what unit tests can't (R-7).
 
-### 6.0a GitHub code scanning (CodeQL, 0.6.1)
+### 6.0b GitHub code scanning (CodeQL, 0.6.1)
 
 CodeQL's first scan of the public repository reported five alerts. All five trace one input: the item ID
 in an artwork request (`ArtworkProvider.openFile`, from the requesting app's `content://` URI) flowing
@@ -301,7 +349,7 @@ CodeQL models Kotlin's `let` as passing its input straight through, so its re-sc
 reported all five alerts. 0.6.2 calls `canonicalItemId` directly. CodeQL's scan of `main` on 2026-09-30 found 0 results, and
 all five alerts are marked **fixed**.
 
-### 6.0b Tailscale feature (0.6.0 and 0.6.1)
+### 6.0c Tailscale feature (0.6.0 and 0.6.1)
 
 The new code (`Tailscale.kt`, and its use in the player service, Settings and sign-in) was reviewed
 before release against the threat model in [section 3](#3-threat-model).
@@ -407,17 +455,17 @@ impact, apart from the controls listed in [5.7](#57-repository-and-supply-chain)
 
 ## 7. Verification
 
-Latest results (0.6.3):
+Latest results (0.7.1):
 
 | Check | Result |
 |---|---|
-| Unit tests | **37 / 37** pass in debug and release: ID validation, LAN detection, stream URLs without credentials, token only to the signed-in server, paging limits and overflow, artwork decode bounds, sign-in checks, Tailscale address detection and connect decisions, GUID rebuilding for artwork IDs, redirect message cleaning, car list positions |
+| Unit tests | **39 / 39** pass in debug and release: ID validation, LAN detection, stream URLs without credentials, token only to the signed-in server, paging limits and overflow, artwork decode bounds, sign-in checks, Tailscale address detection and connect decisions, GUID rebuilding for artwork IDs, redirect message cleaning, car list positions, JSON nesting depth |
 | Android lint | 0 errors in debug and release. Remaining warnings are only newer library versions and translatable-string notes. |
 | Dependencies | **0 known vulnerabilities** in 130 shipped libraries (OSV, 2026-10-01). Details in [DEPENDENCIES.md](DEPENDENCIES.md). |
 | Release APK | Not debuggable. No backup. Explicit network security config. targetSdk 36. Diagnostic code absent. Exported components as in [section 4](#4-attack-surface). |
 | Repository | No secrets or personal data: scanned before the first push, and the full git history again before going public |
 | CI on GitHub | Passing |
-| Code scanning (CodeQL) | 0 open alerts. The first scan's 5 alerts (all one input) were fixed in 0.6.2 ([6.0a](#60a-github-code-scanning-codeql-061)) |
+| Code scanning (CodeQL) | 0 open alerts. The first scan's 5 alerts (all one input) were fixed in 0.6.2 ([6.0a](#60b-github-code-scanning-codeql-061)) |
 | On the phone | Installs and runs. Streaming playback confirmed. The Songs crash (B4-1) and exit crash (B5-1) are fixed and re-tested. Phone screens checked by screenshot (dark mode). |
 | Android Auto (Desktop Head Unit, 2026-09-29) | Listed in the app list with its icon. Opens on Now playing without autoplaying (MA-1). Home, Albums (sort folders, year-grouped grid with artwork and placeholder icons) and an album page browse correctly. A song plays from the car. Shuffle and repeat toggle. The connection log shows Android Auto and the Google app allowed. No crashes. |
 | In a car (2026-09-29) | Playback and now-playing work, and steering-wheel buttons skip tracks. The app list needed **Unknown sources** (see [6.1](#61-after-review-4-050-and-051)). |
@@ -462,6 +510,8 @@ These need a phone, a car or the Desktop Head Unit. Unit tests can't cover them:
 | Licence | **Done:** Apache-2.0, `NOTICE` credits Mark Joseph, name and logo reserved |
 | Name and branding | **Done:** own name (Tentacle) and logo, and "unofficial, not affiliated with Jellyfin" stated. Keep the store listing the same, and don't use Jellyfin's logo. |
 | Repository hardening | **Done:** public since 2026-09-29, with every control in [5.7](#57-repository-and-supply-chain) on |
+| Actions restrictions (A6-2, A6-3) | **To do (owner):** run `powershell -ExecutionPolicy Bypass -File scripts/github-hardening.ps1` once the 0.7.1 changes are merged |
+| Old commit `ac6c776` (A6-4) | **Optional (owner):** ask GitHub Support to remove the unreferenced commit from the `majoseph25/tentacle` repository |
 | Open-source licence notices in the app | **To do:** an in-app licences screen, or a `THIRD_PARTY_LICENSES` file |
 | Privacy policy and Data safety form | **To do:** fill in [PRIVACY.md](../PRIVACY.md), host it at a public URL, and complete Play's Data safety form |
 | Signing | **To do:** an upload key kept out of the repository, Play App Signing, and an App Bundle |

@@ -14,6 +14,7 @@ import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import org.json.JSONArray
+import org.json.JSONException
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
@@ -38,7 +39,7 @@ class JellyfinApi(private val prefs: Prefs) {
             if (e.httpCode == 401) throw JellyfinException("Wrong username or password", 401)
             throw e
         }
-        val o = JSONObject(text)
+        val o = parseObject(text)
         val u = o.getJSONObject("User")
         val token = o.getString("AccessToken")
         // The token goes into every request's Authorization header: reject anything that isn't a plain token.
@@ -177,7 +178,7 @@ class JellyfinApi(private val prefs: Prefs) {
     }
 
     private fun parsePage(text: String): Page {
-        val o = JSONObject(text)
+        val o = parseObject(text)
         val arr = o.optJSONArray("Items") ?: JSONArray()
         val list = (0 until arr.length()).map { arr.getJSONObject(it) }
         return Page(list, o.optInt("TotalRecordCount", list.size))
@@ -217,6 +218,9 @@ class JellyfinApi(private val prefs: Prefs) {
         private const val MAX_IMAGE_BYTES = 5L * 1024 * 1024
         private const val IDS_PER_REQUEST = 100
         private const val MAX_SHOWN_LOCATION = 120
+
+        /** Jellyfin replies nest a handful of levels; this leaves ample room and stays far from the stack limit. */
+        private const val MAX_JSON_DEPTH = 64
         private val JSON = "application/json".toMediaType()
         private val EMPTY_BODY = ByteArray(0).toRequestBody(null)
 
@@ -274,6 +278,36 @@ class JellyfinApi(private val prefs: Prefs) {
                     .addQueryParameter("maxAudioChannels", "2")
                     .build().toString()
             }
+        }
+
+        /**
+         * Parses a server reply. org.json parses nesting recursively, so a reply nested thousands of levels
+         * deep (a hostile server, or someone tampering with plain-HTTP traffic) would overflow the stack with
+         * an Error that `catch (e: Exception)` doesn't catch. Replies nested deeper than any Jellyfin
+         * response are refused first.
+         */
+        fun parseObject(text: String): JSONObject {
+            if (jsonDepth(text) > MAX_JSON_DEPTH) throw JSONException("Server reply nested too deeply")
+            return JSONObject(text)
+        }
+
+        /** Deepest nesting of objects/arrays in [text], ignoring brackets inside strings. Linear, no recursion. */
+        internal fun jsonDepth(text: String): Int {
+            var depth = 0
+            var max = 0
+            var inString = false
+            var escaped = false
+            for (c in text) {
+                when {
+                    escaped -> escaped = false
+                    inString && c == '\\' -> escaped = true
+                    c == '"' -> inString = !inString
+                    inString -> Unit
+                    c == '{' || c == '[' -> if (++depth > max) max = depth
+                    c == '}' || c == ']' -> depth--
+                }
+            }
+            return max
         }
 
         /**
