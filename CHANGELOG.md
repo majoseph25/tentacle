@@ -12,8 +12,8 @@ medium-severity issues. Details are in the
   server, or tampered plain-HTTP traffic) could overflow the JSON parser and crash the app during sign-in.
   Replies nested more than 64 levels are now rejected before parsing.
 - **GitHub Actions restrictions** were added to `scripts/github-hardening.ps1`: only GitHub's own actions
-  and Gradle's may run, and workflows from outside contributors always need approval. They take effect
-  when the owner runs the script.
+  and Gradle's may run, and workflows from outside contributors always need approval. Applied to the
+  repository on 2026-10-02, after the merge; CI passes under them.
 
 ## 0.7.0 (build 12) — 2026-10-02
 
